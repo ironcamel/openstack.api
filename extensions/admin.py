@@ -19,6 +19,8 @@ import base64
 import datetime
 import json
 
+from webob import exc
+
 from nova import db
 from nova import exception
 from nova import flags
@@ -123,37 +125,47 @@ class ProjectController(wsgi.Controller):
             [project_dict(u) for u in
             manager.AuthManager().get_projects(user=user)]}
 
-    def create(self, name, manager_user, description=None,
-                         member_users=None):
+    def create(self, req):
         """Creates a new project"""
+        env = self._deserialize(req.body, req.get_content_type())
+        name = env['project'].get('name')
+        manager_user = env['project'].get('manager_user')
+        description = env['project'].get('description')
+        member_users = env['project'].get('member_users')
+
+        context = req.environ['nova.context']
         msg = _("Create project %(name)s managed by"
                 " %(manager_user)s") % locals()
-        context = req.environ['nova.context']
         LOG.audit(msg, context=context)
-        return project_dict(
-            manager.AuthManager().create_project(
-                name,
-                manager_user,
-                description=None,
-                member_users=None))
+        project =  project_dict(
+                     manager.AuthManager().create_project(
+                     name,
+                     manager_user,
+                     description=None,
+                     member_users=None))
+        return {'project': project}
 
-    def update(self, name, manager_user, description=None):
+    def update(self, req):
         """Modifies a project"""
+        context = req.environ['nova.context']
+        env = self._deserialize(req.body, req.get_content_type())
+        name = env['project'].get('name')
+        manager_user = env['project'].get('manager_user')
+        description = env['project'].get('description')
         msg = _("Modify project: %(name)s managed by"
                 " %(manager_user)s") % locals()
-        context = req.environ['nova.context']
         LOG.audit(msg, context=context)
         manager.AuthManager().modify_project(name,
                                              manager_user=manager_user,
                                              description=description)
         return True
 
-    def delete(self, name):
+    def delete(self, req, id):
         """Permanently deletes a project."""
         context = req.environ['nova.context']
-        LOG.audit(_("Delete project: %s"), name, context=context)
-        manager.AuthManager().delete_project(name)
-        return True
+        LOG.audit(_("Delete project: %s"), id, context=context)
+        manager.AuthManager().delete_project(id)
+        return exc.HTTPAccepted()
 
 
 class Admin(object):
@@ -162,7 +174,7 @@ class Admin(object):
         pass
 
     def get_name(self):
-        return "Admin COntroller"
+        return "Admin Controller"
 
     def get_alias(self):
         return "ADMIN"
