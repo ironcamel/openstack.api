@@ -1,9 +1,9 @@
 from openstack.api.connection import ApiConnection
-from openstack.admin.projects import ProjectManager
+from openstack.auth.tokens import TokenManager
 from openstack.api.config import Config
 
 
-class Admin(object):
+class Auth(object):
     """
     Top-level object to access the OpenStack Admin API.
 
@@ -23,8 +23,9 @@ class Admin(object):
 
     def __init__(self, **kwargs):
         self.config = self._get_config(kwargs)
+        self.config.auth_token = 'ignore'
         self.connection = ApiConnection(self.config)
-        self.projects = ProjectManager(self)
+        self.tokens = TokenManager(self)
 
     def authenticate(self):
         """

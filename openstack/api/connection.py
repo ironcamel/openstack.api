@@ -29,8 +29,6 @@ class ApiConnection(httplib2.Http):
     def request(self, *args, **kwargs):
         kwargs.setdefault('headers', {})
         kwargs['headers']['User-Agent'] = self.config.user_agent
-        print args
-        print kwargs
         if 'body' in kwargs:
             kwargs['headers']['Content-Type'] = 'application/json'
             kwargs['body'] = json.dumps(kwargs['body'])
