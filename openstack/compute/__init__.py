@@ -2,7 +2,7 @@ __version__ = '2.0a1'
 
 import os
 from distutils.util import strtobool
-from openstack.api.client import ApiClient
+from openstack.api.connection import ApiConnection
 from openstack.api.config import Config
 from openstack.compute.backup_schedules import (BackupSchedule, BackupScheduleManager,
         BACKUP_WEEKLY_DISABLED, BACKUP_WEEKLY_SUNDAY, BACKUP_WEEKLY_MONDAY,
@@ -46,7 +46,7 @@ class Compute(object):
     def __init__(self, **kwargs):
         self.config = self._get_config(kwargs)
         self.backup_schedules = BackupScheduleManager(self)
-        self.client = ApiClient(self.config)
+        self.connection = ApiConnection(self.config)
         self.flavors = FlavorManager(self)
         self.images = ImageManager(self)
         self.servers = ServerManager(self)
@@ -64,7 +64,7 @@ class Compute(object):
         the credentials are wrong.
         """
         pass
-        #self.client.authenticate()
+        #self.connection.authenticate()
 
     def _get_config(self, kwargs):
         """

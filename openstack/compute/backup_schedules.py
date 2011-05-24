@@ -82,7 +82,7 @@ class BackupScheduleManager(base.Manager):
         body = {'backupSchedule': {
             'enabled': enabled, 'weekly': weekly, 'daily': daily
         }}
-        self.api.client.post('/servers/%s/backup_schedule' % s, body=body)
+        self.api.connection.post('/servers/%s/backup_schedule' % s, body=body)
         
     update = create
     

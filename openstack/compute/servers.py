@@ -299,4 +299,4 @@ class ServerManager(base.ManagerWithFind):
         """
         Perform a server "action" -- reboot/rebuild/resize/etc.
         """
-        self.api.client.post('/servers/%s/action' % base.getid(server), body={action: info})
+        self.api.connection.post('/servers/%s/action' % base.getid(server), body={action: info})

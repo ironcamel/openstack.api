@@ -1,7 +1,7 @@
 import os
 import ConfigParser
 from distutils.util import strtobool
-from openstack.api.client import ApiClient
+from openstack.api.connection import ApiConnection
 from openstack.api.exceptions import (ApiException, BadRequest, Unauthorized,
     Forbidden, NotFound, OverLimit)
 from openstack.admin.projects import ProjectManager
@@ -28,7 +28,7 @@ class Admin(object):
 
     def __init__(self, **kwargs):
         self.config = self._get_config(kwargs)
-        self.client = ApiClient(self.config)
+        self.connection = ApiConnection(self.config)
         self.projects = ProjectManager(self)
 
     def authenticate(self):
@@ -41,7 +41,7 @@ class Admin(object):
         Returns on success; raises :exc:`~openstack.compute.Unauthorized` if
         the credentials are wrong.
         """
-        self.client.authenticate()
+        self.connection.authenticate()
 
     def _get_config(self, kwargs):
         """
