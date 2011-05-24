@@ -22,4 +22,4 @@ class TokenManager(base.ManagerWithFind):
                                           "password": password,
                                           "tenantId": tenant}}
 
-        return self._create('', params, "auth")
+        return self._create('token', params, "auth")

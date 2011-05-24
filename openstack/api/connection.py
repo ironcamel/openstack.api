@@ -44,7 +44,6 @@ class ApiConnection(httplib2.Http):
         else:
             body = None
 
-        print resp.status
         if resp.status in (400, 401, 403, 404, 413, 500):
             raise exceptions.from_response(resp, body)
 

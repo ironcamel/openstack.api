@@ -3,7 +3,7 @@ import openstack.compute
 import openstack.auth
 
 
-auth = openstack.auth.Auth(management_url='http://localhost:8080/v2.0/token')
+auth = openstack.auth.Auth(management_url='http://localhost:8080/v2.0/')
 token = auth.tokens.create('1234', 'joeuser', 'secrete')
 
 if False:
