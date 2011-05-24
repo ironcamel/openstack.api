@@ -10,6 +10,14 @@ class Token(base.Resource):
     def id(self):
         return self._info['token']['id']
 
+    @property
+    def username(self):
+        return self._info['user']['username'] 
+
+    @property
+    def tenant_id(self):
+        return self._info['user']['tenantId'] 
+
     def delete(self):
         self.manager.delete(self)
 
