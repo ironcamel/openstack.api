@@ -44,6 +44,7 @@ class ApiConnection(httplib2.Http):
         else:
             body = None
 
+        print resp.status
         if resp.status in (400, 401, 403, 404, 413, 500):
             raise exceptions.from_response(resp, body)
 
@@ -63,14 +64,15 @@ class ApiConnection(httplib2.Http):
                                       **kwargs)
             return resp, body
         except exceptions.Unauthorized, ex:
-            try:
-                self.authenticate()
-                resp, body = self.request(self.management_url + url,
-                                          method,
-                                          **kwargs)
-                return resp, body
-            except exceptions.Unauthorized:
-                raise ex
+            raise ex
+#            try:
+#                self.authenticate()
+#                resp, body = self.request(self.management_url + url,
+#                                          method,
+#                                          **kwargs)
+#                return resp, body
+#            except exceptions.Unauthorized:
+#                raise ex
 
     def get(self, url, **kwargs):
         url = self._munge_get_url(url)
