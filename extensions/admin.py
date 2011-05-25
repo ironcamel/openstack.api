@@ -28,10 +28,10 @@ from nova import log as logging
 from nova import utils
 from nova import wsgi
 from nova.auth import manager
-from nova import api
 
 
 from nova.api.openstack import extensions
+from nova.api.openstack import views
 
 FLAGS = flags.FLAGS
 LOG = logging.getLogger('nova.api.openstack.admin')
@@ -129,9 +129,16 @@ def vpn_dict(project, vpn_instance):
 class ServerController(wsgi.Controller):
     def _get_builder(self, req):
         class ViewBuilder(api.openstack.views.servers.ViewBuilderV11):
-            def __init__(self, addresses_builder, flavor_builder, image_builder,
+            def __init__(self,
+                         addresses_builder,
+                         flavor_builder,
+                         image_builder,
                          base_url):
-                api.openstack.views.servers.ViewBuilderV11.__init__(self, addresses_builder, flavor_builder, image_builder, base_url)
+                views.servers.ViewBuilderV11.__init__(self,
+                                                      addresses_builder,
+                                                      flavor_builder,
+                                                      image_builder,
+                                                      base_url)
 
             def _build_extra(self, response, inst):
                 self._build_links(response, inst)
@@ -162,11 +169,9 @@ class ServerController(wsgi.Controller):
                 response['server']['attrs'] = attrs
 
         base_url = req.application_url
-        flavor_builder = api.openstack.views.flavors.ViewBuilderV11(
-            base_url)
-        image_builder = api.openstack.views.images.ViewBuilderV11(
-            base_url)
-        addresses_builder = api.openstack.views.addresses.ViewBuilderV11()
+        flavor_builder = views.flavors.ViewBuilderV11(base_url)
+        image_builder = views.images.ViewBuilderV11(base_url)
+        addresses_builder = views.addresses.ViewBuilderV11()
 
         return ViewBuilder(
             addresses_builder, flavor_builder, image_builder, base_url)
@@ -235,7 +240,7 @@ class ProjectController(wsgi.Controller):
         msg = _("Create project %(name)s managed by"
                 " %(manager_user)s") % locals()
         LOG.audit(msg, context=context)
-        project =  project_dict(
+        project = project_dict(
                      manager.AuthManager().create_project(
                      name,
                      manager_user,
