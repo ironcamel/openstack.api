@@ -28,6 +28,7 @@ from nova import log as logging
 from nova import utils
 from nova import wsgi
 from nova.auth import manager
+from nova import api
 
 
 from nova.api.openstack import extensions
@@ -87,7 +88,20 @@ def instance_dict(inst):
             'memory_mb': inst['memory_mb'],
             'vcpus': inst['vcpus'],
             'disk_gb': inst['local_gb'],
-            'flavor_id': inst['flavorid']}
+            'image_id': inst['image_id'],
+            'kernel_id': inst['kernel_id'],
+            'ramdisk_id': inst['ramdisk_id'],
+            'user': inst['user_id'],
+            'scheduled_at': inst['scheduled_at'],
+            'launched_at': inst['launched_at'],
+            'terminated_at': inst['terminated_at'],
+            'display_name': inst['display_name'],
+            'display_description': inst['display_description'],
+            'os_type': inst['os_type'],
+            'hostname': inst['hostname'],
+            'host': inst['host'],
+            'id': inst['id'],
+            }
 
 
 def vpn_dict(project, vpn_instance):
@@ -110,6 +124,61 @@ def vpn_dict(project, vpn_instance):
     else:
         rv['state'] = 'pending'
     return rv
+
+
+class ServerController(wsgi.Controller):
+    def _get_builder(self, req):
+        class ViewBuilder(api.openstack.views.servers.ViewBuilderV11):
+            def __init__(self, addresses_builder, flavor_builder, image_builder,
+                         base_url):
+                api.openstack.views.servers.ViewBuilderV11.__init__(self, addresses_builder, flavor_builder, image_builder, base_url)
+
+            def _build_extra(self, response, inst):
+                self._build_links(response, inst)
+                self._build_extended_attributes(response, inst)
+
+            def _build_extended_attributes(self, response, inst):
+                attrs = {'name': inst['name'],
+                        'memory_mb': inst['memory_mb'],
+                        'vcpus': inst['vcpus'],
+                        'disk_gb': inst['local_gb'],
+                        'image_id': inst['image_id'],
+                        'kernel_id': inst['kernel_id'],
+                        'ramdisk_id': inst['ramdisk_id'],
+                        'user_id': inst['user_id'],
+                        'project_id': inst['project'].id,
+                        'scheduled_at': inst['scheduled_at'],
+                        'launched_at': inst['launched_at'],
+                        'terminated_at': inst['terminated_at'],
+                        'display_name': inst['display_name'],
+                        'display_description': inst['display_description'],
+                        'os_type': inst['os_type'],
+                        'hostname': inst['hostname'],
+                        'host': inst['host'],
+                        'key_name': inst['key_name'],
+                        'mac_address': inst['mac_address'],
+                        'os_type': inst['os_type'],
+                        }
+                response['server']['attrs'] = attrs
+
+        base_url = req.application_url
+        flavor_builder = api.openstack.views.flavors.ViewBuilderV11(
+            base_url)
+        image_builder = api.openstack.views.images.ViewBuilderV11(
+            base_url)
+        addresses_builder = api.openstack.views.addresses.ViewBuilderV11()
+
+        return ViewBuilder(
+            addresses_builder, flavor_builder, image_builder, base_url)
+
+    def index(self, req):
+        context = req.environ['nova.context'].elevated()
+        instances = db.instance_get_all(context)
+        builder = self._get_builder(req)
+        server_list = db.instance_get_all(context)
+        servers = [builder.build(inst, True)['server']
+                for inst in instances]
+        return dict(servers=servers)
 
 
 class ServiceController(wsgi.Controller):
@@ -221,5 +290,7 @@ class Admin(object):
                                                  ProjectController())
         resource = extensions.ResourceExtension('admin/services',
                                                  ServiceController())
+        resource = extensions.ResourceExtension('admin/servers',
+                                                 ServerController())
         resources.append(resource)
         return resources
