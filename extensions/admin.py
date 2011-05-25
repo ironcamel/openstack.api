@@ -21,6 +21,7 @@ import json
 
 from webob import exc
 
+from nova import compute
 from nova import db
 from nova import exception
 from nova import flags
@@ -31,6 +32,7 @@ from nova.auth import manager
 
 
 from nova.api.openstack import extensions
+from nova.api.openstack import faults
 from nova.api.openstack import views
 
 FLAGS = flags.FLAGS
@@ -185,6 +187,27 @@ class ServerController(wsgi.Controller):
                 for inst in instances]
         return dict(servers=servers)
 
+    def show(self, req, id):
+        context = req.environ['nova.context'].elevated()
+        instance = db.instance_get(context, id)
+        builder = self._get_builder(req)
+        return builder.build(instance, True)
+
+
+class ConsoleController(wsgi.Controller):
+    def create(self, req):
+        context = req.environ['nova.context'].elevated()
+        env = self._deserialize(req.body, req.get_content_type())
+        console_type = env['console'].get('type')
+        server_id = env['console'].get('server_id')
+        if console_type == 'text':
+            compute_api = compute.API()
+            output = compute_api.get_console_output(
+                      context, instance_id=server_id)
+        else:
+            raise Exception("Not Implemented")
+        return {'console':{'id': '', 'type': console_type, 'output': output}}
+
 
 class ServiceController(wsgi.Controller):
 
@@ -284,18 +307,19 @@ class Admin(object):
         return "The Admin API Extension"
 
     def get_namespace(self):
-        return "http://www.fox.in.socks/api/ext/pie/v1.0"
+        return "http:TODO/"
 
     def get_updated(self):
-        return "2011-01-22T13:25:27-06:00"
+        return "2011-05-25 16:12:21.656723"
 
     def get_resources(self):
         resources = []
-        resource = extensions.ResourceExtension('admin/projects',
-                                                 ProjectController())
-        resource = extensions.ResourceExtension('admin/services',
-                                                 ServiceController())
-        resource = extensions.ResourceExtension('admin/servers',
-                                                 ServerController())
-        resources.append(resource)
+        resources.append(extensions.ResourceExtension('admin/projects',
+                                                 ProjectController()))
+        resources.append(extensions.ResourceExtension('admin/services',
+                                                 ServiceController()))
+        resources.append(extensions.ResourceExtension('admin/servers',
+                                             ServerController()))
+        resources.append(extensions.ResourceExtension('admin/consoles',
+                                             ConsoleController()))
         return resources

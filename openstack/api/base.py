@@ -25,26 +25,21 @@ class Manager(object):
 
     def _list(self, url, response_key):
         resp, body = self.api.connection.get(url)
-        print body
         return [self.resource_class(self, res) for res in body[response_key]]
 
     def _get(self, url, response_key):
         resp, body = self.api.connection.get(url)
-        print body
         return self.resource_class(self, body[response_key])
 
     def _create(self, url, body, response_key):
         resp, body = self.api.connection.post(url, body=body)
-        print body
         return self.resource_class(self, body[response_key])
 
     def _delete(self, url):
         resp, body = self.api.connection.delete(url)
-        print body
 
     def _update(self, url, body):
         resp, body = self.api.connection.put(url, body=body)
-        print body
 
 
 class ManagerWithFind(Manager):
