@@ -128,7 +128,7 @@ def vpn_dict(project, vpn_instance):
 
 class ServerController(wsgi.Controller):
     def _get_builder(self, req):
-        class ViewBuilder(api.openstack.views.servers.ViewBuilderV11):
+        class ViewBuilder(views.servers.ViewBuilderV11):
             def __init__(self,
                          addresses_builder,
                          flavor_builder,
