@@ -17,7 +17,7 @@ class ProjectManager(base.ManagerWithFind):
 
     def list(self):
         """Get a list of all groups."""
-        return self._list("/admin/projects", "projectSet")
+        return self._list("/admin/projects", "projects")
 
     def get(self, project_id):
         """Get an Project."""

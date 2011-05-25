@@ -112,21 +112,50 @@ def vpn_dict(project, vpn_instance):
     return rv
 
 
+class ServiceController(wsgi.Controller):
+
+    def index(self, req):
+        rv = {'services': [{'zoneName': 'nova',
+                                        'zoneState': 'available'}]}
+
+        context = req.environ['nova.context']  # without an elevated context this will fail!
+        services = db.service_get_all(context, False)
+        now = datetime.datetime.utcnow()
+        hosts = []
+        for host in [service['host'] for service in services]:
+            if not host in hosts:
+                hosts.append(host)
+        for host in hosts:
+            rv['services'].append({'zoneName': '|- %s' % host,
+                                               'zoneState': ''})
+            hsvcs = [service for service in services \
+                     if service['host'] == host]
+            for svc in hsvcs:
+                delta = now - (svc['updated_at'] or svc['created_at'])
+                alive = (delta.seconds <= FLAGS.service_down_time)
+                art = (alive and ":-)") or "XXX"
+                active = 'enabled'
+                if svc['disabled']:
+                    active = 'disabled'
+                rv['services'].append({
+                        'zoneName': '| |- %s' % svc['binary'],
+                        'zoneState': '%s %s %s' % (active, art,
+                                                   svc['updated_at'])})
+        return rv
+
+
 class ProjectController(wsgi.Controller):
 
     def show(self, req, id):
-        """Returns project data, including member ids."""
         return project_dict(manager.AuthManager().get_project(id))
 
     def index(self, req):
-        """Returns all projects - should be changed to deal with a list."""
         user = req.environ.get('user')
-        return {'projectSet':
+        return {'projects':
             [project_dict(u) for u in
             manager.AuthManager().get_projects(user=user)]}
 
     def create(self, req):
-        """Creates a new project"""
         env = self._deserialize(req.body, req.get_content_type())
         name = env['project'].get('name')
         manager_user = env['project'].get('manager_user')
@@ -146,7 +175,6 @@ class ProjectController(wsgi.Controller):
         return {'project': project}
 
     def update(self, req):
-        """Modifies a project"""
         context = req.environ['nova.context']
         env = self._deserialize(req.body, req.get_content_type())
         name = env['project'].get('name')
@@ -161,7 +189,6 @@ class ProjectController(wsgi.Controller):
         return True
 
     def delete(self, req, id):
-        """Permanently deletes a project."""
         context = req.environ['nova.context']
         LOG.audit(_("Delete project: %s"), id, context=context)
         manager.AuthManager().delete_project(id)
@@ -192,5 +219,7 @@ class Admin(object):
         resources = []
         resource = extensions.ResourceExtension('admin/projects',
                                                  ProjectController())
+        resource = extensions.ResourceExtension('admin/services',
+                                                 ServiceController())
         resources.append(resource)
         return resources

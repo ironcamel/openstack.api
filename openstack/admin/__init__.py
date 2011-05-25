@@ -1,5 +1,6 @@
 from openstack.api.connection import ApiConnection
 from openstack.admin.projects import ProjectManager
+from openstack.admin.services import ServiceManager
 from openstack.api.config import Config
 
 
@@ -25,6 +26,7 @@ class Admin(object):
         self.config = self._get_config(kwargs)
         self.connection = ApiConnection(self.config)
         self.projects = ProjectManager(self)
+        self.services = ServiceManager(self)
 
     def authenticate(self):
         """
