@@ -9,6 +9,6 @@ class Console(base.Resource):
 class ConsoleManager(base.ManagerWithFind):
     resource_class = Console
 
-    def create(self, server_id):
-        body = {"console": {"type": 'text', 'server_id': server_id}}
+    def create(self, server_id, console_type='text'):
+        body = {"console": {"type": console_type, 'server_id': server_id}}
         return self._create('/extras/consoles', body, "console")

@@ -44,12 +44,16 @@ class ConsoleController(wsgi.Controller):
     def create(self, req):
         context = req.environ['nova.context'].elevated()
         env = self._deserialize(req.body, req.get_content_type())
+        print env
         console_type = env['console'].get('type')
         server_id = env['console'].get('server_id')
+        compute_api = compute.API()
         if console_type == 'text':
-            compute_api = compute.API()
             output = compute_api.get_console_output(
-                      context, instance_id=server_id)
+                      context, server_id)
+        elif console_type == 'vnc':
+            output = compute_api.get_vnc_console(
+                      context, server_id)
         else:
             raise Exception("Not Implemented")
         return {'console':{'id': '', 'type': console_type, 'output': output}}

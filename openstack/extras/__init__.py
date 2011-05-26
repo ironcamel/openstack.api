@@ -1,5 +1,5 @@
 from openstack.api.connection import ApiConnection
-from openstack.admin.consoles import ConsoleManager
+from openstack.extras.consoles import ConsoleManager
 from openstack.api.config import Config
 
 
