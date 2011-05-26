@@ -30,7 +30,6 @@ from nova import utils
 from nova import wsgi
 from nova.auth import manager
 
-
 from nova.api.openstack import extensions
 from nova.api.openstack import faults
 from nova.api.openstack import views
@@ -53,7 +52,7 @@ class ConsoleController(wsgi.Controller):
                       context, server_id)
         elif console_type == 'vnc':
             output = compute_api.get_vnc_console(
-                      context, server_id)
+                      context, server_id)['url']
         else:
             raise Exception("Not Implemented")
         return {'console':{'id': '', 'type': console_type, 'output': output}}

@@ -20,7 +20,7 @@ compute = openstack.compute.Compute(auth_token=token.id,
                                     management_url='http://localhost:8774/v1.1/')
 servers = admin.servers.list()
 
-console = extras.consoles.create(servers[0].id)
+console = extras.consoles.create(servers[0].id, 'vnc')
 print console.output
 
 #print compute.servers.list()
