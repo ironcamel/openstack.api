@@ -18,8 +18,11 @@
 import base64
 import datetime
 import json
+import urlparse
+
 
 from webob import exc
+
 
 from nova import compute
 from nova import db
@@ -31,9 +34,12 @@ from nova import wsgi
 from nova.auth import manager
 
 
+import nova.api.openstack as openstack_api
 from nova.api.openstack import extensions
 from nova.api.openstack import faults
 from nova.api.openstack import views
+
+from nova.compute import instance_types
 
 FLAGS = flags.FLAGS
 LOG = logging.getLogger('nova.api.openstack.admin')
@@ -209,6 +215,44 @@ class ConsoleController(wsgi.Controller):
         return {'console':{'id': '', 'type': console_type, 'output': output}}
 
 
+class FlavorController(openstack_api.flavors.ControllerV11):
+
+    def create(self, req):
+        env = self._deserialize(req.body, req.get_content_type())
+
+        name = env['flavor'].get('name')
+        memory_mb = env['flavor'].get('memory_mb')
+        vcpus = env['flavor'].get('vcpus')
+        local_gb = env['flavor'].get('local_gb')
+        flavorid = env['flavor'].get('flavorid')
+        swap = env['flavor'].get('swap')
+        rxtx_quota = env['flavor'].get('rxtx_quota')
+        rxtx_cap = env['flavor'].get('rxtx_cap')
+
+        context = req.environ['nova.context'].elevated()
+        flavor = instance_types.create(name, memory_mb, vcpus,
+                                       local_gb, flavorid,
+                                       swap, rxtx_quota, rxtx_cap)
+        builder = self._get_view_builder(req)
+        values = builder.build(env['flavor'], is_detail=True)
+        return dict(flavor=values)
+
+    def delete(self, req, id):
+        print id
+        qs = req.environ.get('QUERY_STRING', '')
+        env = urlparse.parse_qs(qs)
+
+        purge = env.get('purge', False)
+
+        flavor = instance_types.get_instance_type_by_flavor_id(id)
+        if purge:
+            instance_types.purge(flavor['name'])
+        else:
+            instance_types.destroy(flavor['name'])
+    
+        return exc.HTTPAccepted()
+
+
 class ServiceController(wsgi.Controller):
 
     def index(self, req):
@@ -322,4 +366,6 @@ class Admin(object):
                                              ServerController()))
         resources.append(extensions.ResourceExtension('admin/consoles',
                                              ConsoleController()))
+        resources.append(extensions.ResourceExtension('admin/flavors',
+                                             FlavorController()))
         return resources
