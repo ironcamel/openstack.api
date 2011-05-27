@@ -9,6 +9,10 @@ class Flavor(compute.Flavor):
     def delete(self, purge=False):
         self.manager.delete(self.id, purge)
 
+#    @property
+#    def memory_mb(self):
+#        return self._info['memory_mb']
+
 
 class FlavorManager(compute.FlavorManager):
     resource_class = Flavor
@@ -32,3 +36,11 @@ class FlavorManager(compute.FlavorManager):
     def delete(self, id, purge=False):
         print "delete %s" % id
         self._delete("/admin/flavors/%s?purge=%s" % (id, purge))
+
+    def list(self):
+        """
+        Get a list of all flavors.
+        
+        :rtype: list of :class:`Flavor`.
+        """
+        return self._list("/admin/flavors", "flavors")

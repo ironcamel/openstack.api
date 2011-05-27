@@ -217,6 +217,26 @@ class ConsoleController(wsgi.Controller):
 
 class FlavorController(openstack_api.flavors.ControllerV11):
 
+    def _get_view_builder(self, req):
+        class ViewBuilder(views.flavors.ViewBuilderV11):
+            def __init__(self, base_url):
+                self.base_url = base_url
+
+            def _build_simple(self, flavor_obj):
+                simple = {
+                    "id": flavor_obj["flavorid"],
+                    "name": flavor_obj["name"],
+                    #FIXME - why isn't this memory_mb?
+                    "ram": flavor_obj["memory_mb"],
+                    "disk": flavor_obj["local_gb"],
+                    "vcpus": flavor_obj["vcpus"],
+                }
+                return simple
+
+
+        base_url = req.application_url
+        return ViewBuilder(base_url)
+
     def create(self, req):
         env = self._deserialize(req.body, req.get_content_type())
 
@@ -238,7 +258,6 @@ class FlavorController(openstack_api.flavors.ControllerV11):
         return dict(flavor=values)
 
     def delete(self, req, id):
-        print id
         qs = req.environ.get('QUERY_STRING', '')
         env = urlparse.parse_qs(qs)
 

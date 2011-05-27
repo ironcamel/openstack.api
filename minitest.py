@@ -19,12 +19,13 @@ compute = openstack.compute.Compute(auth_token=token.id,
                                     auth_url='http://localhost:8774/v1.1/',
                                     management_url='http://localhost:8774/v1.1/')
 flavors = admin.flavors.list()
-print flavors
-print "pre"
-print "post"
-flavor = admin.flavors.create('m1.test05', 128, 1, 0, 405)
-flavor.delete(True)
-print flavors
+for f in flavors:
+    print f._info
+
+
+#admin.flavors.delete(405)
+flavor = admin.flavors.create('', '', '', '', '')
+#flavor.delete(True)
 
 #console = extras.consoles.create(servers[0].id, 'vnc')
 #print console.output
