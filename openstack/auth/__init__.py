@@ -1,5 +1,6 @@
 from openstack.api.connection import ApiConnection
 from openstack.auth.tokens import TokenManager
+from openstack.auth.tenants import TenantManager
 from openstack.api.config import Config
 
 
@@ -26,6 +27,7 @@ class Auth(object):
         self.config.auth_token = 'ignore'
         self.connection = ApiConnection(self.config)
         self.tokens = TokenManager(self)
+        self.tenants = TenantManager(self)
 
     def authenticate(self):
         """
