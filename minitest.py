@@ -42,6 +42,7 @@ compute = openstack.compute.Compute(auth_token=token.id,
 #flavor.delete(True)
 
 if True:
+    print "%d tenants" % len(accounts.tenants.list())
     t = accounts.tenants.create('project:%d' % random.randint(0, 10000))
     print 'created %s' % t
     print "%d tenants" % len(accounts.tenants.list())

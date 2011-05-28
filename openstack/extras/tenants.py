@@ -33,7 +33,7 @@ class TenantManager(base.ManagerWithFind):
 
     def create(self, tenant_id, description=None, enabled=True):
         params = {"tenant": {"id": tenant_id,
-
+                             "description": description,
                              "enabled": enabled}}
 
         return self._create('/tenants', params, "tenant")
