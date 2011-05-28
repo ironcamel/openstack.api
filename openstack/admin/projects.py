@@ -8,6 +8,9 @@ class Project(base.Resource):
     def delete(self):
         self.manager.delete(self)
 
+    def update(self, *args, **kwargs):
+        self.manager.update(self.name, *args, **kwargs)
+
 
 class ProjectManager(base.ManagerWithFind):
     resource_class = Project
@@ -26,8 +29,8 @@ class ProjectManager(base.ManagerWithFind):
     def delete(self, project_id):
         self._delete("/admin/projects/%s" % (project_id))
 
-    def update(self, project, name, manager_user, description=None):
+    def update(self, name, manager_user, description=None):
         body = {"project": {'name': name, 'manager_user': manager_user}}
         if description:
             body["project"]["description"] = description
-        self._update("/projects/%s" % base.getid(project), body)
+        self._update("/admin/projects/%s" % name, body)

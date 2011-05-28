@@ -275,33 +275,30 @@ class FlavorController(openstack_api.flavors.ControllerV11):
 class ServiceController(wsgi.Controller):
 
     def index(self, req):
-        rv = {'services': [{'zoneName': 'nova',
-                                        'zoneState': 'available'}]}
-
-        context = req.environ['nova.context']  # without an elevated context this will fail!
-        services = db.service_get_all(context, False)
+        context = req.environ['nova.context'].elevated()
         now = datetime.datetime.utcnow()
-        hosts = []
-        for host in [service['host'] for service in services]:
-            if not host in hosts:
-                hosts.append(host)
-        for host in hosts:
-            rv['services'].append({'zoneName': '|- %s' % host,
-                                               'zoneState': ''})
-            hsvcs = [service for service in services \
-                     if service['host'] == host]
-            for svc in hsvcs:
-                delta = now - (svc['updated_at'] or svc['created_at'])
-                alive = (delta.seconds <= FLAGS.service_down_time)
-                art = (alive and ":-)") or "XXX"
-                active = 'enabled'
-                if svc['disabled']:
-                    active = 'disabled'
-                rv['services'].append({
-                        'zoneName': '| |- %s' % svc['binary'],
-                        'zoneState': '%s %s %s' % (active, art,
-                                                   svc['updated_at'])})
-        return rv
+        services = []
+        print "1111"
+        for service in db.service_get_all(context, False):
+            print "2222"
+            delta = now - (service['updated_at'] or service['created_at'])
+            services.append({
+                'id': service['id'],
+                'host': service['host'],
+                'disabled': service['disabled'],
+                'type': service['binary'],
+                'zone': service['availability_zone'],
+                'last_update': service['updated_at'],
+                'up': (delta.seconds <= FLAGS.service_down_time)
+            })
+        return {'services': services}
+
+    def update(self, req, id):
+        context = req.environ['nova.context'].elevated()
+        env = self._deserialize(req.body, req.get_content_type())
+        name = env['service'].get('disabled')
+        db.service_update(context, id, env['service'])
+        return exc.HTTPAccepted()
 
 
 class ProjectController(wsgi.Controller):
@@ -334,10 +331,10 @@ class ProjectController(wsgi.Controller):
                      member_users=None))
         return {'project': project}
 
-    def update(self, req):
+    def update(self, req, id):
         context = req.environ['nova.context']
         env = self._deserialize(req.body, req.get_content_type())
-        name = env['project'].get('name')
+        name = id
         manager_user = env['project'].get('manager_user')
         description = env['project'].get('description')
         msg = _("Modify project: %(name)s managed by"
@@ -346,7 +343,7 @@ class ProjectController(wsgi.Controller):
         manager.AuthManager().modify_project(name,
                                              manager_user=manager_user,
                                              description=description)
-        return True
+        return exc.HTTPAccepted()
 
     def delete(self, req, id):
         context = req.environ['nova.context']

@@ -18,13 +18,16 @@ admin = openstack.admin.Admin(auth_token=token.id,
 compute = openstack.compute.Compute(auth_token=token.id,
                                     auth_url='http://localhost:8774/v1.1/',
                                     management_url='http://localhost:8774/v1.1/')
-flavors = admin.flavors.list()
-for f in flavors:
-    print f._info
+#flavors = admin.flavors.list()
+#services =  admin.services.list()
+#print services
+#for s in services:
+#    print s._info
+#    s.update(False)
 
 
 #admin.flavors.delete(405)
-flavor = admin.flavors.create('', '', '', '', '')
+#flavor = admin.flavors.create('', '', '', '', '')
 #flavor.delete(True)
 
 #console = extras.consoles.create(servers[0].id, 'vnc')
@@ -32,9 +35,16 @@ flavor = admin.flavors.create('', '', '', '', '')
 
 #print compute.servers.list()
 
-if False:
-    admin.projects.create('test', 'joeuser')
-    admin.projects.delete('test')
+if True:
+    try:
+        project = admin.projects.create('test', 'joeuser', 'desc')
+    except:
+        admin.projects.delete('test')
+        pass
 
-    print admin.projects.list()
-    print compute.images.list()
+    project.update('joeuser', 'desc2')
+
+    for p in admin.projects.list():
+        print p._info
+    admin.projects.delete('test')
+    #print compute.images.list()
