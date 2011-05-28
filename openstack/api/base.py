@@ -25,7 +25,12 @@ class Manager(object):
 
     def _list(self, url, response_key):
         resp, body = self.api.connection.get(url)
-        return [self.resource_class(self, res) for res in body[response_key]]
+        data = body[response_key]
+        # NOTE(ja): keystone returns values as list as {'values': [ ... ]}
+        #           unlike other services which just return the list...
+        if type(data) is dict:
+            data = data['values']
+        return [self.resource_class(self, res) for res in data]
 
     def _get(self, url, response_key):
         resp, body = self.api.connection.get(url)
@@ -92,8 +97,13 @@ class Resource(object):
         self._add_details(info)
 
     def _add_details(self, info):
+        # FIXME(ja): tenants breaks this - also some data is in _info and some in
+        #            base dict (as in this function) is odd?
         for (k, v) in info.iteritems():
-            setattr(self, k, v)
+            try:
+                setattr(self, k, v)
+            except:
+                pass
 
     def __getattr__(self, k):
         self.get()
