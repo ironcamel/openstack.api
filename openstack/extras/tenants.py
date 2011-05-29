@@ -5,33 +5,21 @@ class Tenant(base.Resource):
     def __repr__(self):
         return "<Tenant %s>" % self._info
 
-    @property
-    def id(self):
-        return self._info['id']
-
-    @property
-    def enabled(self):
-        return self._info['enabled']
-
-    @property
-    def description(self):
-        return self._info['description']
-
     def delete(self):
         self.manager.delete(self)
 
-    def update(self, name=None, description=None):
-        if name is None:
-            name = self.name
-        if description is None:
-            description = self.description
-        self.manager.update(self, name, description)
+    def update(self, description=None, enabled=None):
+        description = description or self.description or '(none)'
+        self.manager.update(self.id, description, enabled)
 
 
 class TenantManager(base.ManagerWithFind):
     resource_class = Tenant
 
-    def create(self, tenant_id, description=None, enabled=True):
+    def get(self, tenant_id):
+        return self._get("/tenants/%s" % tenant_id, "tenant")
+
+    def create(self, tenant_id, description, enabled=True):
         params = {"tenant": {"id": tenant_id,
                              "description": description,
                              "enabled": enabled}}
@@ -45,15 +33,20 @@ class TenantManager(base.ManagerWithFind):
         """
         return self._list("/tenants", "tenants")
 
-    def update(self, tenant, name, description):
+    def update(self, tenant_id, description=None, enabled=None):
         """
         update a tenant with a new name and description
         """
-        body = {'name': name, 'description': description}
-        self._update("/tenants/%s" % base.getid(tenant), body)
+        body = {"tenant": {'id': tenant_id }}
+        if enabled is not None:
+            body['tenant']['enabled'] = enabled
+        if description:
+            body['tenant']['description'] = description
 
-    def delete(self, tenant):
+        self._update("/tenants/%s" % tenant_id, body)
+
+    def delete(self, tenant_id):
         """
         Delete a tenant
         """
-        self._delete("/tenants/%s" % base.getid(tenant))
+        self._delete("/tenants/%s" % tenant_id)
