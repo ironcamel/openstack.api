@@ -12,11 +12,17 @@ class Token(base.Resource):
 
     @property
     def username(self):
-        return self._info['user']['username'] 
+        try:
+            return self._info['user']['username'] 
+        except:
+            return "?"
 
     @property
     def tenant_id(self):
-        return self._info['user']['tenantId'] 
+        try:
+            return self._info['user']['tenantId'] 
+        except:
+            return "?"
 
     def delete(self):
         self.manager.delete(self)
