@@ -34,7 +34,6 @@ class FlavorManager(compute.FlavorManager):
         return self._create('/admin/flavors', body, "flavor")
 
     def delete(self, id, purge=False):
-        print "delete %s" % id
         self._delete("/admin/flavors/%s?purge=%s" % (id, purge))
 
     def list(self):
