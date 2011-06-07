@@ -16,11 +16,11 @@
 #    under the License.
 
 import base64
-import datetime
 import json
 import urlparse
 
-
+from datetime import datetime
+from operator import add
 from webob import exc
 
 
@@ -32,6 +32,7 @@ from nova import log as logging
 from nova import utils
 from nova import wsgi
 from nova.auth import manager
+from nova.db.sqlalchemy.session import get_session
 
 
 import nova.api.openstack as openstack_api
@@ -272,15 +273,135 @@ class FlavorController(openstack_api.flavors.ControllerV11):
         return exc.HTTPAccepted()
 
 
+class UsageController(wsgi.Controller):
+
+    def _hours_for(self, instance, period_start, period_stop):
+        # nothing if it stopped before the usage report start
+        #terminated_at = instance['terminated_at']
+        #launched_at = instance['launched_at']
+
+        launched_at = terminated_at = None
+        if instance['terminated_at'] is not None:
+            print instance['terminated_at']
+            terminated_at = datetime.strptime(instance['terminated_at'], "%Y-%m-%d %H:%M:%S.%f")
+
+        if instance['launched_at'] is not None:
+            print instance['launched_at']
+            launched_at = datetime.strptime(instance['launched_at'], "%Y-%m-%d %H:%M:%S.%f")
+
+        if terminated_at and terminated_at < period_start:
+            return 0
+        # nothing if it started after the usage report ended
+        if launched_at and launched_at > period_stop:
+            return 0
+        if launched_at:
+            # if instance launched after period_started, don't charge for first
+            start = max(launched_at, period_start)
+            if terminated_at:
+                # if instance stopped before period_stop, don't charge after
+                stop = min(period_stop, terminated_at)
+            else:
+                # instance is still running, so charge them up to current time
+                stop = period_stop
+            dt = stop - start
+            seconds = dt.days * 3600 * 24 + dt.seconds\
+                      + dt.microseconds / 100000.0
+
+            return seconds/3600.0
+        else:
+            # instance hasn't launched, so no charge
+            return 0
+
+    def _usage_for_period(self, period_start, period_stop, tenant_id=None):
+        fields = ['id',
+                  'image_id',
+                  'project_id',
+                  'user_id',
+                  'vcpus',
+                  'hostname',
+                  'host',
+                  'instance_type_id',
+                  'launched_at',
+                  'terminated_at']
+
+        tenant_clause = ''
+        if tenant_id:
+            tenant_clause = " and project_id='%s'" % tenant_id
+
+        connection = get_session().connection()
+        rows = connection.execute("select %s from instances where \
+                                   (terminated_at is NULL or terminated_at > '%s') \
+                                   and (launched_at < '%s') %s" %\
+                                   (','.join(fields), period_start.isoformat(' '),\
+                                   period_stop.isoformat(' '), tenant_clause
+                                   )).fetchall()
+
+        rval = {}
+
+        for row in rows:
+            o = {}
+            for i in range(len(fields)):
+                o[fields[i]] = row[i]
+            o['hours'] = self._hours_for(o, period_start, period_stop)
+
+            flavor = instance_types.get_instance_type_by_flavor_id(o['instance_type_id'])
+
+            o['ram_size'] = flavor['memory_mb']
+            o['disk_size'] = flavor['local_gb']
+
+            o['tenant_id'] = o['project_id']
+            del(o['project_id'])
+
+            o['flavor'] = flavor['name']
+            del(o['instance_type_id'])
+
+            o['started_at'] = o['launched_at']
+            del(o['started_at'])
+
+            o['ended_at'] = o['terminated_at']
+            del(o['terminated_at'])
+
+            if not o['tenant_id'] in rval:
+                summary = {}
+                summary['instances'] = []
+                summary['total_disk_size'] = 0
+                summary['total_ram_size'] = 0
+                summary['total_hours'] = 0
+                summary['begin'] = period_start
+                summary['stop'] = period_stop
+                rval[o['tenant_id']] = summary
+
+            rval[o['tenant_id']]['total_disk_size'] += o['disk_size']
+            rval[o['tenant_id']]['total_ram_size'] += o['ram_size']
+            rval[o['tenant_id']]['total_hours'] += o['hours']
+            rval[o['tenant_id']]['instances'].append(o)
+
+        return rval.values()
+
+    def index(self, req):
+        period_start = datetime.utcnow()
+        period_stop = datetime.utcnow()
+        usage = self._usage_for_period(period_start, period_stop)
+        return {'usage': {'values': usage}}
+    
+    def show(self, req, id):
+        period_start = datetime.utcnow()
+        period_stop = datetime.utcnow()
+        usage = self._usage_for_period(period_start, period_stop, id)
+        if len(usage):
+            usage = usage[0]
+        else:
+            usage = None
+        return {'usage': usage}
+    
+
 class ServiceController(wsgi.Controller):
 
     def index(self, req):
         context = req.environ['nova.context'].elevated()
-        now = datetime.datetime.utcnow()
+        now = datetime.utcnow()
         services = []
-        print "1111"
         for service in db.service_get_all(context, False):
-            print "2222"
             delta = now - (service['updated_at'] or service['created_at'])
             services.append({
                 'id': service['id'],
@@ -380,8 +501,10 @@ class Admin(object):
                                                  ServiceController()))
         resources.append(extensions.ResourceExtension('admin/servers',
                                              ServerController()))
-        resources.append(extensions.ResourceExtension('admin/consoles',
+        resources.append(extensions.ResourceExtension('extras/consoles',
                                              ConsoleController()))
         resources.append(extensions.ResourceExtension('admin/flavors',
                                              FlavorController()))
+        resources.append(extensions.ResourceExtension('extras/usage',
+                                             UsageController()))
         return resources

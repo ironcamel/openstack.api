@@ -1,6 +1,7 @@
 from openstack.api.connection import ApiConnection
 from openstack.extras.consoles import ConsoleManager
 from openstack.extras.tenants import TenantManager
+from openstack.extras.usage import UsageManager
 from openstack.api.config import Config
 
 
@@ -26,6 +27,7 @@ class Extras(object):
         self.config = self._get_config(kwargs)
         self.connection = ApiConnection(self.config)
         self.consoles = ConsoleManager(self)
+        self.usage = UsageManager(self)
 
     def authenticate(self):
         """
