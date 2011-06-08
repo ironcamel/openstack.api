@@ -207,10 +207,13 @@ class ConsoleController(wsgi.Controller):
         env = self._deserialize(req.body, req.get_content_type())
         console_type = env['console'].get('type')
         server_id = env['console'].get('server_id')
+        compute_api = compute.API()
         if console_type == 'text':
-            compute_api = compute.API()
             output = compute_api.get_console_output(
                       context, instance_id=server_id)
+        elif console_type == 'vnc':
+            output = compute_api.get_vnc_console(
+                      context, instance_id=server_id)['url']
         else:
             raise Exception("Not Implemented")
         return {'console':{'id': '', 'type': console_type, 'output': output}}
@@ -319,6 +322,7 @@ class UsageController(wsgi.Controller):
                   'user_id',
                   'vcpus',
                   'hostname',
+                  'display_name',
                   'host',
                   'instance_type_id',
                   'launched_at',
@@ -346,6 +350,9 @@ class UsageController(wsgi.Controller):
 
             flavor = instance_types.get_instance_type_by_flavor_id(o['instance_type_id'])
 
+            o['name'] = o['display_name']
+            del(o['display_name'])
+
             o['ram_size'] = flavor['memory_mb']
             o['disk_size'] = flavor['local_gb']
 
@@ -364,29 +371,43 @@ class UsageController(wsgi.Controller):
             if not o['tenant_id'] in rval:
                 summary = {}
                 summary['instances'] = []
-                summary['total_disk_size'] = 0
-                summary['total_ram_size'] = 0
+                summary['total_disk_usage'] = 0
+                summary['total_cpu_usage'] = 0
+                summary['total_ram_usage'] = 0
                 summary['total_hours'] = 0
                 summary['begin'] = period_start
                 summary['stop'] = period_stop
                 rval[o['tenant_id']] = summary
 
-            rval[o['tenant_id']]['total_disk_size'] += o['disk_size']
-            rval[o['tenant_id']]['total_ram_size'] += o['ram_size']
+            rval[o['tenant_id']]['total_disk_usage'] += o['disk_size'] * o['hours']
+            rval[o['tenant_id']]['total_cpu_usage'] += o['vcpus'] * o['hours']
+            rval[o['tenant_id']]['total_ram_usage'] += o['ram_size'] * o['hours']
             rval[o['tenant_id']]['total_hours'] += o['hours']
             rval[o['tenant_id']]['instances'].append(o)
 
         return rval.values()
 
+
+    def _parse_datetime(self, dtstr):
+        try:
+            return datetime.strptime(dtstr, "%Y-%m-%dT%H:%M:%S")
+        except:
+            return datetime.strptime(dtstr, "%Y-%m-%dT%H:%M:%S.%f")
+
+    def _get_datetime_range(self, req):
+        qs = req.environ.get('QUERY_STRING', '')
+        env = urlparse.parse_qs(qs)
+        period_start = self._parse_datetime(env.get('start', [datetime.utcnow().isoformat()])[0])
+        period_stop = self._parse_datetime(env.get('end', [datetime.utcnow().isoformat()])[0])
+        return (period_start, period_stop)
+
     def index(self, req):
-        period_start = datetime.utcnow()
-        period_stop = datetime.utcnow()
+        (period_start, period_stop) = self._get_datetime_range(req)
         usage = self._usage_for_period(period_start, period_stop)
         return {'usage': {'values': usage}}
     
     def show(self, req, id):
-        period_start = datetime.utcnow()
-        period_stop = datetime.utcnow()
+        (period_start, period_stop) = self._get_datetime_range(req)
         usage = self._usage_for_period(period_start, period_stop, id)
         if len(usage):
             usage = usage[0]

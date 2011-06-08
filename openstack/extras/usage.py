@@ -8,8 +8,8 @@ class Usage(base.Resource):
 class UsageManager(base.ManagerWithFind):
     resource_class = Usage
 
-    def list(self):
-        return self._list("/extras/usage", "usage")
+    def list(self, start, end):
+        return self._list("/extras/usage?start=%s&end=%s" % (start.isoformat(), end.isoformat()), "usage")
 
-    def get(self, tenant_id):
-        return self._get("/extras/usage/%s" % tenant_id, "usage")
+    def get(self, tenant_id, start, end):
+        return self._get("/extras/usage/%s?start=%s&end=%s" % (tenant_id, start.isoformat(), end.isoformat()), "usage")
