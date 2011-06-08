@@ -374,6 +374,9 @@ class UsageController(wsgi.Controller):
 
             del(o['state_description'])
 
+            delta = datetime.utcnow() - self._parse_datetime(o['started_at'])
+            o['uptime'] = delta.days + 24 * 60 + delta.seconds
+
             if not o['tenant_id'] in rval:
                 summary = {}
                 summary['instances'] = []
@@ -409,7 +412,10 @@ class UsageController(wsgi.Controller):
         try:
             return datetime.strptime(dtstr, "%Y-%m-%dT%H:%M:%S")
         except:
-            return datetime.strptime(dtstr, "%Y-%m-%dT%H:%M:%S.%f")
+            try:
+                return datetime.strptime(dtstr, "%Y-%m-%dT%H:%M:%S.%f")
+            except:
+                return datetime.strptime(dtstr, "%Y-%m-%d %H:%M:%S.%f")
 
     def _get_datetime_range(self, req):
         qs = req.environ.get('QUERY_STRING', '')
