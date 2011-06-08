@@ -322,6 +322,7 @@ class UsageController(wsgi.Controller):
                   'hostname',
                   'display_name',
                   'host',
+                  'state_description',
                   'instance_type_id',
                   'launched_at',
                   'terminated_at']
@@ -361,10 +362,17 @@ class UsageController(wsgi.Controller):
             del(o['instance_type_id'])
 
             o['started_at'] = o['launched_at']
-            del(o['started_at'])
+            del(o['launched_at'])
 
             o['ended_at'] = o['terminated_at']
             del(o['terminated_at'])
+
+            if o['ended_at']:
+                o['state'] = 'terminated'
+            else:
+                o['state'] = o['state_description']
+
+            del(o['state_description'])
 
             if not o['tenant_id'] in rval:
                 summary = {}
@@ -410,7 +418,7 @@ class UsageController(wsgi.Controller):
         if len(usage):
             usage = usage[0]
         else:
-            usage = None
+            usage = {}
         return {'usage': usage}
     
 
