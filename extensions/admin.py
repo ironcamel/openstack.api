@@ -397,16 +397,15 @@ class UsageController(wsgi.Controller):
             rval[o['tenant_id']]['total_cpu_usage'] += o['vcpus'] * o['hours']
             rval[o['tenant_id']]['total_ram_usage'] += o['ram_size'] * o['hours']
 
-            if o['state'] is not 'terminated':
-                rval[o['tenant_id']]['total_active_ram_size'] += o['ram_size']
-                rval[o['tenant_id']]['total_active_vcpus'] += o['vcpus']
-                rval[o['tenant_id']]['total_active_disk_size'] += o['disk_size']
+#            if o['state'] is not 'terminated':
+#                rval[o['tenant_id']]['total_active_ram_size'] += o['ram_size']
+#                rval[o['tenant_id']]['total_active_vcpus'] += o['vcpus']
+#                rval[o['tenant_id']]['total_active_disk_size'] += o['disk_size']
 
             rval[o['tenant_id']]['total_hours'] += o['hours']
             rval[o['tenant_id']]['instances'].append(o)
 
         return rval.values()
-
 
     def _parse_datetime(self, dtstr):
         try:
