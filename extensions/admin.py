@@ -379,6 +379,7 @@ class UsageController(wsgi.Controller):
 
             if not o['tenant_id'] in rval:
                 summary = {}
+                summary['tenant_id'] = o['tenant_id']
                 summary['instances'] = []
                 summary['total_disk_usage'] = 0
                 summary['total_cpu_usage'] = 0
@@ -387,6 +388,7 @@ class UsageController(wsgi.Controller):
                 summary['total_active_ram_size'] = 0
                 summary['total_active_disk_size'] = 0
                 summary['total_active_vcpus'] = 0
+                summary['total_active_instances'] = 0
 
                 summary['total_hours'] = 0
                 summary['begin'] = period_start
@@ -401,6 +403,7 @@ class UsageController(wsgi.Controller):
                 rval[o['tenant_id']]['total_active_ram_size'] += o['ram_size']
                 rval[o['tenant_id']]['total_active_vcpus'] += o['vcpus']
                 rval[o['tenant_id']]['total_active_disk_size'] += o['disk_size']
+                rval[o['tenant_id']]['total_active_instances'] += 1
 
             rval[o['tenant_id']]['total_hours'] += o['hours']
             rval[o['tenant_id']]['instances'].append(o)
