@@ -43,6 +43,9 @@ from nova.api.openstack import views
 from nova.compute import instance_types
 
 FLAGS = flags.FLAGS
+flags.DECLARE('max_gigabytes', 'nova.scheduler.simple')
+flags.DECLARE('max_cores', 'nova.scheduler.simple')
+
 LOG = logging.getLogger('nova.api.openstack.admin')
 
 
@@ -449,6 +452,10 @@ class ServiceController(wsgi.Controller):
         services = []
         for service in db.service_get_all(context, False):
             delta = now - (service['updated_at'] or service['created_at'])
+            stats = {}
+            if service['binary'] == 'nova-compute':
+                stats['max_vcpus'] = FLAGS.max_cores
+                stats['max_gigabytes'] = FLAGS.max_gigabytes
             services.append({
                 'id': service['id'],
                 'host': service['host'],
@@ -456,7 +463,8 @@ class ServiceController(wsgi.Controller):
                 'type': service['binary'],
                 'zone': service['availability_zone'],
                 'last_update': service['updated_at'],
-                'up': (delta.seconds <= FLAGS.service_down_time)
+                'up': (delta.seconds <= FLAGS.service_down_time),
+                'stats': stats
             })
         return {'services': services}
 
