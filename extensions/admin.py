@@ -221,9 +221,7 @@ class ConsoleController(wsgi.Controller):
             raise Exception("Not Implemented")
         return {'console':{'id': '', 'type': console_type, 'output': output}}
 
-
-class FlavorController(openstack_api.flavors.ControllerV11):
-
+class ExtrasFlavorController(openstack_api.flavors.ControllerV11):
     def _get_view_builder(self, req):
         class ViewBuilder(views.flavors.ViewBuilderV11):
             def __init__(self, base_url):
@@ -243,6 +241,9 @@ class FlavorController(openstack_api.flavors.ControllerV11):
 
         base_url = req.application_url
         return ViewBuilder(base_url)
+
+
+class AdminFlavorController(ExtrasFlavorController):
 
     def create(self, req):
         env = self._deserialize(req.body, req.get_content_type())
@@ -558,7 +559,9 @@ class Admin(object):
         resources.append(extensions.ResourceExtension('extras/consoles',
                                              ConsoleController()))
         resources.append(extensions.ResourceExtension('admin/flavors',
-                                             FlavorController()))
+                                             AdminFlavorController()))
         resources.append(extensions.ResourceExtension('extras/usage',
                                              UsageController()))
+        resources.append(extensions.ResourceExtension('extras/flavors',
+                                             ExtrasFlavorController()))
         return resources
