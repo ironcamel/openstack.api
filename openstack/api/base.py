@@ -106,7 +106,6 @@ class Resource(object):
                 pass
 
     def __getattr__(self, k):
-        self.get()
         if k not in self.__dict__:
             raise AttributeError(k)
         else:
