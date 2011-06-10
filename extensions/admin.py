@@ -450,7 +450,7 @@ class ServiceController(wsgi.Controller):
         context = req.environ['nova.context'].elevated()
         now = datetime.utcnow()
         services = []
-        for service in db.service_get_all(context, False):
+        for service in db.service_get_all(context):
             delta = now - (service['updated_at'] or service['created_at'])
             stats = {}
             if service['binary'] == 'nova-compute':
