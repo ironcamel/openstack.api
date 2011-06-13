@@ -17,13 +17,7 @@ class ServiceManager(base.ManagerWithFind):
         return self._list("/admin/services", "services")
 
     def get(self, id):
-#        FIXME(dt): search services ourself until we get ServiceController.show added
-#        return self._get("/admin/services/%s" % id, "services")
-        services = self._list("/admin/services", "services")
-        for service in services:
-            if str(service.id) == str(id):
-                return service
-        return None
+        return self._get("/admin/services/%s" % id, "service")
 
     def update(self, id, disabled):
         body = {"service": {'disabled': disabled}}
