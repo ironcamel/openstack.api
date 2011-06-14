@@ -2,7 +2,7 @@
 Base utilities to build API operation managers and objects on top of.
 """
 
-from openstack.api.exceptions import NotFound
+from openstackx.api.exceptions import NotFound
 
 # Python 2.4 compat
 try:

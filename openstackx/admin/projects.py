@@ -1,4 +1,4 @@
-from openstack.api import base
+from openstackx.api import base
 
 
 class Project(base.Resource):

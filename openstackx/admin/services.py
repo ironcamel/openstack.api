@@ -1,5 +1,5 @@
-from openstack.api import base
-from openstack.compute.api import API_OPTIONS
+from openstackx.api import base
+from openstackx.compute.api import API_OPTIONS
 
 
 class Services(base.Resource):

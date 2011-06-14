@@ -1,9 +1,9 @@
-from openstack.api.connection import ApiConnection
-from openstack.extras.consoles import ConsoleManager
-from openstack.extras.flavors import FlavorManager
-from openstack.extras.tenants import TenantManager
-from openstack.extras.usage import UsageManager
-from openstack.api.config import Config
+from openstackx.api.connection import ApiConnection
+from openstackx.extras.consoles import ConsoleManager
+from openstackx.extras.flavors import FlavorManager
+from openstackx.extras.tenants import TenantManager
+from openstackx.extras.usage import UsageManager
+from openstackx.api.config import Config
 
 
 class Extras(object):

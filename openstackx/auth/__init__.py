@@ -1,7 +1,7 @@
-from openstack.api.connection import ApiConnection
-from openstack.auth.tokens import TenantManager
-from openstack.auth.tokens import TokenManager
-from openstack.api.config import Config
+from openstackx.api.connection import ApiConnection
+from openstackx.auth.tokens import TenantManager
+from openstackx.auth.tokens import TokenManager
+from openstackx.api.config import Config
 
 
 class Auth(object):

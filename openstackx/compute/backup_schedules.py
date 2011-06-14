@@ -1,4 +1,4 @@
-from openstack.api import base
+from openstackx.api import base
 
 BACKUP_WEEKLY_DISABLED  = 'DISABLED'
 BACKUP_WEEKLY_SUNDAY    = 'SUNDAY'

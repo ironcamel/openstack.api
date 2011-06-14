@@ -10,7 +10,7 @@ if sys.version_info < (2,6):
     requirements.append('simplejson')
 
 setup(
-    name = "openstack.compute",
+    name = "openstack.api",
     version = "2.0a1",
     description = "Client library for the OpenStack Compute API",
     long_description = read('README.rst'),
@@ -28,13 +28,13 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
     ],
-    namespace_packages = ["openstack"],
+    namespace_packages = ["openstackx"],
     install_requires = requirements,
     
     tests_require = ["nose", "mock"],
     test_suite = "nose.collector",
     
     entry_points = {
-        'console_scripts': ['openstack-compute = openstack.compute.shell:main']
+        'console_scripts': ['openstack-api = openstack.api.shell:main']
     }
 )

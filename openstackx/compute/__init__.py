@@ -2,9 +2,9 @@ __version__ = '2.0a1'
 
 import os
 from distutils.util import strtobool
-from openstack.api.connection import ApiConnection
-from openstack.api.config import Config
-from openstack.compute.backup_schedules import (BackupSchedule, BackupScheduleManager,
+from openstackx.api.connection import ApiConnection
+from openstackx.api.config import Config
+from openstackx.compute.backup_schedules import (BackupSchedule, BackupScheduleManager,
         BACKUP_WEEKLY_DISABLED, BACKUP_WEEKLY_SUNDAY, BACKUP_WEEKLY_MONDAY,
         BACKUP_WEEKLY_TUESDAY, BACKUP_WEEKLY_WEDNESDAY,
         BACKUP_WEEKLY_THURSDAY, BACKUP_WEEKLY_FRIDAY, BACKUP_WEEKLY_SATURDAY,
@@ -15,13 +15,13 @@ from openstack.compute.backup_schedules import (BackupSchedule, BackupScheduleMa
         BACKUP_DAILY_H_1400_1600, BACKUP_DAILY_H_1600_1800,
         BACKUP_DAILY_H_1800_2000, BACKUP_DAILY_H_2000_2200,
         BACKUP_DAILY_H_2200_0000)
-from openstack.compute.exceptions import (ComputeException, BadRequest, Unauthorized,
+from openstackx.compute.exceptions import (ComputeException, BadRequest, Unauthorized,
     Forbidden, NotFound, OverLimit)
-from openstack.compute.flavors import FlavorManager, Flavor
-from openstack.compute.images import ImageManager, Image
-from openstack.compute.ipgroups import IPGroupManager, IPGroup
-from openstack.compute.servers import ServerManager, Server, REBOOT_HARD, REBOOT_SOFT
-from openstack.compute.api import API_OPTIONS
+from openstackx.compute.flavors import FlavorManager, Flavor
+from openstackx.compute.images import ImageManager, Image
+from openstackx.compute.ipgroups import IPGroupManager, IPGroup
+from openstackx.compute.servers import ServerManager, Server, REBOOT_HARD, REBOOT_SOFT
+from openstackx.compute.api import API_OPTIONS
 
 DEFAULT_CONFIG_FILE = os.path.expanduser('~/.openstack/compute.conf')
 

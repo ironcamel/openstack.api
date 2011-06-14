@@ -1,7 +1,8 @@
-import openstack.admin
-import openstack.compute
-import openstack.auth
-import openstack.extras
+from datetime import datetime
+import openstackx.admin
+import openstackx.compute
+import openstackx.auth
+import openstackx.extras
 import random
 import sys
 
@@ -11,24 +12,33 @@ else:
     host = 'localhost'
 
 
-auth = openstack.auth.Auth(management_url='http://%s:8080/v2.0/' % host)
+auth = openstackx.auth.Auth(management_url='http://%s:8080/v2.0/' % host)
 token = auth.tokens.create('1234', 'joeuser', 'secrete')
+print token.id
 
 admin_token = auth.tokens.create('1234', 'admin', 'secrete')
-accounts = openstack.extras.Account(auth_token=admin_token.id,
+accounts = openstackx.extras.Account(auth_token=admin_token.id,
         management_url='http://%s:8081/v2.0' % host)
 
-extras = openstack.extras.Extras(auth_token=token.id,
+extras = openstackx.extras.Extras(auth_token=token.id,
                                  auth_url='http://%s:8774/v1.1/' % host,
                                  management_url='http://%s:8774/v1.1/' % host)
 
-admin = openstack.admin.Admin(auth_token=token.id,
+admin = openstackx.admin.Admin(auth_token=token.id,
                               auth_url='http://%s:8774/v1.1/' % host,
                               management_url='http://%s:8774/v1.1/' % host)
 
-compute = openstack.compute.Compute(auth_token=token.id,
+compute = openstackx.compute.Compute(auth_token=token.id,
                                     auth_url='http://%s:8774/v1.1/' % host,
                                     management_url='http://%s:8774/v1.1/' % host)
+
+print extras.flavors.list()[0]._info
+print extras.usage.get('1234', datetime.utcnow(), datetime.utcnow())._info
+#print extras.usage.list(datetime.utcnow(), datetime.utcnow())[0]._info
+print admin.services.list()[3]._info
+servers = compute.servers.list()
+console = extras.consoles.create(servers[0].id, 'vnc')
+print console
 #flavors = admin.flavors.list()
 #services =  admin.services.list()
 #print services
@@ -41,9 +51,13 @@ compute = openstack.compute.Compute(auth_token=token.id,
 #flavor = admin.flavors.create('', '', '', '', '')
 #flavor.delete(True)
 
-if True:
+if False:
+    print accounts.tenants.get('1234')
     print "%d tenants" % len(accounts.tenants.list())
     t = accounts.tenants.create('project:%d' % random.randint(0, 10000))
+    t.update("test", False)
+    print t.enabled
+    print t.description
     print 'created %s' % t
     print "%d tenants" % len(accounts.tenants.list())
     t.delete()

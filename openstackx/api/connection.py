@@ -12,7 +12,7 @@ if not hasattr(urlparse, 'parse_qsl'):
     import cgi
     urlparse.parse_qsl = cgi.parse_qsl
 
-from openstack.api import exceptions
+from openstackx.api import exceptions
 
 
 class ApiConnection(httplib2.Http):
