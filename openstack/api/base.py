@@ -40,6 +40,10 @@ class Manager(object):
         resp, body = self.api.connection.post(url, body=body)
         return self.resource_class(self, body[response_key])
 
+    def _put_create(self, url, body, response_key):
+        resp, body = self.api.connection.post(url, body=body)
+        return self.resource_class(self, body[response_key])
+
     def _delete(self, url):
         resp, body = self.api.connection.delete(url)
 
