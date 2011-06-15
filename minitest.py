@@ -13,6 +13,7 @@ else:
 
 auth = openstack.auth.Auth(management_url='http://%s:8080/v2.0/' % host)
 token = auth.tokens.create('1234', 'joeuser', 'secrete')
+print token._info
 
 admin_token = auth.tokens.create('1234', 'admin', 'secrete')
 accounts = openstack.extras.Account(auth_token=admin_token.id,
@@ -29,6 +30,7 @@ admin = openstack.admin.Admin(auth_token=token.id,
 compute = openstack.compute.Compute(auth_token=token.id,
                                     auth_url='http://%s:8774/v1.1/' % host,
                                     management_url='http://%s:8774/v1.1/' % host)
+print admin.servers.list()[0]._info
 #flavors = admin.flavors.list()
 #services =  admin.services.list()
 #print services

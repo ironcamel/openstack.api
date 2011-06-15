@@ -378,7 +378,14 @@ class UsageController(wsgi.Controller):
 
             del(o['state_description'])
 
-            delta = datetime.utcnow() - self._parse_datetime(o['started_at'])
+            now = datetime.utcnow()
+
+            if o['state'] == 'terminated':
+                delta = self._parse_datetime(o['ended_at'])\
+                             - self._parse_datetime(o['started_at'])
+            else:
+                delta = now - self._parse_datetime(o['started_at'])
+
             o['uptime'] = delta.days + 24 * 60 + delta.seconds
 
             if not o['tenant_id'] in rval:
