@@ -447,27 +447,35 @@ class UsageController(wsgi.Controller):
 
 class ServiceController(wsgi.Controller):
 
+    def _set_attr(self, service):
+        now = datetime.utcnow()
+        delta = now - (service['updated_at'] or service['created_at'])
+        stats = {}
+        if service['binary'] == 'nova-compute':
+            stats['max_vcpus'] = FLAGS.max_cores
+            stats['max_gigabytes'] = FLAGS.max_gigabytes
+        return {
+            'id': service['id'],
+            'host': service['host'],
+            'disabled': service['disabled'],
+            'type': service['binary'],
+            'zone': service['availability_zone'],
+            'last_update': service['updated_at'],
+            'up': (delta.seconds <= FLAGS.service_down_time),
+            'stats': stats
+        }
+
     def index(self, req):
         context = req.environ['nova.context'].elevated()
-        now = datetime.utcnow()
         services = []
-        for service in db.service_get_all(context, False):
-            delta = now - (service['updated_at'] or service['created_at'])
-            stats = {}
-            if service['binary'] == 'nova-compute':
-                stats['max_vcpus'] = FLAGS.max_cores
-                stats['max_gigabytes'] = FLAGS.max_gigabytes
-            services.append({
-                'id': service['id'],
-                'host': service['host'],
-                'disabled': service['disabled'],
-                'type': service['binary'],
-                'zone': service['availability_zone'],
-                'last_update': service['updated_at'],
-                'up': (delta.seconds <= FLAGS.service_down_time),
-                'stats': stats
-            })
+        for service in db.service_get_all(context):
+            services.append(self._set_attr(service))
         return {'services': services}
+
+    def show(self, req, id):
+        context = req.environ['nova.context'].elevated()
+        service = self._set_attr(db.service_get(context, id))
+        return {'service': service}
 
     def update(self, req, id):
         context = req.environ['nova.context'].elevated()
