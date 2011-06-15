@@ -317,7 +317,7 @@ class UsageController(wsgi.Controller):
             # instance hasn't launched, so no charge
             return 0
 
-    def _usage_for_period(self, period_start, period_stop, tenant_id=None):
+    def _usage_for_period(self, context, period_start, period_stop, tenant_id=None):
         fields = ['id',
                   'image_id',
                   'project_id',
@@ -351,7 +351,7 @@ class UsageController(wsgi.Controller):
                 o[fields[i]] = row[i]
             o['hours'] = self._hours_for(o, period_start, period_stop)
 
-            flavor = instance_types.get_instance_type_by_flavor_id(o['instance_type_id'])
+            flavor = db.instance_type_get_by_id(context, o['instance_type_id'])
 
             o['name'] = o['display_name']
             del(o['display_name'])
@@ -432,12 +432,14 @@ class UsageController(wsgi.Controller):
 
     def index(self, req):
         (period_start, period_stop) = self._get_datetime_range(req)
-        usage = self._usage_for_period(period_start, period_stop)
+        context = req.environ['nova.context']
+        usage = self._usage_for_period(context, period_start, period_stop)
         return {'usage': {'values': usage}}
     
     def show(self, req, id):
         (period_start, period_stop) = self._get_datetime_range(req)
-        usage = self._usage_for_period(period_start, period_stop, id)
+        context = req.environ['nova.context']
+        usage = self._usage_for_period(context, period_start, period_stop, id)
         if len(usage):
             usage = usage[0]
         else:
