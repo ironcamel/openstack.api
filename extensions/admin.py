@@ -191,26 +191,6 @@ class ExtrasServerController(openstack_api.servers.ControllerV11):
     def index(self, req):
         return self._items(req, is_detail=True)
 
-# Note - this may not be needed, extras may be sufficient
-class AdminServerController(ExtrasServerController):
-
-    pass
-
-#    def index(self, req):
-#        context = req.environ['nova.context'].elevated()
-#        instances = db.instance_get_all(context)
-#        builder = self._get_builder(req)
-#        server_list = db.instance_get_all(context)
-#        servers = [builder.build(inst, True)['server']
-#                for inst in instances]
-#        return dict(servers=servers)
-#
-#    def show(self, req, id):
-#        context = req.environ['nova.context'].elevated()
-#        instance = db.instance_get(context, id)
-#        builder = self._get_builder(req)
-#        return builder.build(instance, True)
-
 
 class ConsoleController(wsgi.Controller):
     def create(self, req):
@@ -228,6 +208,7 @@ class ConsoleController(wsgi.Controller):
         else:
             raise Exception("Not Implemented")
         return {'console':{'id': '', 'type': console_type, 'output': output}}
+
 
 class ExtrasFlavorController(openstack_api.flavors.ControllerV11):
     def _get_view_builder(self, req):
@@ -581,8 +562,6 @@ class Admin(object):
                                                  ProjectController()))
         resources.append(extensions.ResourceExtension('admin/services',
                                                  ServiceController()))
-        resources.append(extensions.ResourceExtension('admin/servers',
-                                             AdminServerController()))
         resources.append(extensions.ResourceExtension('extras/consoles',
                                              ConsoleController()))
         resources.append(extensions.ResourceExtension('admin/flavors',

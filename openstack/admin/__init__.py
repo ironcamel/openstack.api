@@ -29,7 +29,6 @@ class Admin(object):
         self.connection = ApiConnection(self.config)
         self.projects = ProjectManager(self)
         self.services = ServiceManager(self)
-        self.servers = ServerManager(self)
         self.flavors = FlavorManager(self)
 
     def authenticate(self):
