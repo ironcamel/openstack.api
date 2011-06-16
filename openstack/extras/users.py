@@ -19,12 +19,17 @@ class UserManager(base.ManagerWithFind):
     def get(self, user_id):
         return self._get("/users/%s" % user_id, "user")
 
-    def create(self, user_id, description, enabled=True):
-        params = {"tenant": {"id": user_id,
-                             "email": email,
-                             "enabled": enabled}}
-
+    def create(self, user_id, email, password, tenant_id, enabled=True):
+        params = {"user": {"id": user_id,
+                           "email": email,
+                           "tenantId": tenant_id,
+                           "enabled": enabled,
+                           "password": password}}
         return self._create('/users', params, "user")
+
+    def _create(self, url, body, response_key):
+        resp, body = self.api.connection.put(url, body=body)
+        return self.resource_class(self, body[response_key])
 
     def list(self):
         """
