@@ -25,6 +25,7 @@ from webob import exc
 
 
 from nova import compute
+from nova import crypto
 from nova import db
 from nova import exception
 from nova import flags
@@ -223,7 +224,7 @@ class ExtrasServerController(openstack_api.servers.ControllerV11):
 
 
 
-class ConsoleController(wsgi.Controller):
+class ExtrasConsoleController(wsgi.Controller):
     def create(self, req):
         context = req.environ['nova.context'].elevated()
         env = self._deserialize(req.body, req.get_content_type())
@@ -476,7 +477,7 @@ class UsageController(wsgi.Controller):
         return {'usage': usage}
     
 
-class ServiceController(wsgi.Controller):
+class AdminServiceController(wsgi.Controller):
 
     def _set_attr(self, service):
         now = datetime.utcnow()
@@ -516,7 +517,71 @@ class ServiceController(wsgi.Controller):
         return exc.HTTPAccepted()
 
 
-class ProjectController(wsgi.Controller):
+class ExtrasKeypairController(wsgi.Controller):
+    def _gen_key(self, context, user_id, key_name):
+        """Generate a key
+
+        This is a module level method because it is slow and we need to defer
+        it into a process pool."""
+        # NOTE(vish): generating key pair is slow so check for legal
+        #             creation before creating key_pair
+        try:
+            db.key_pair_get(context, user_id, key_name)
+            raise exception.KeyPairExists(key_name=key_name)
+        except exception.NotFound:
+            pass
+        private_key, public_key, fingerprint = crypto.generate_key_pair()
+        key = {}
+        key['user_id'] = user_id
+        key['name'] = key_name
+        key['public_key'] = public_key
+        key['fingerprint'] = fingerprint
+        db.key_pair_create(context, key)
+        return {'private_key': private_key, 'fingerprint': fingerprint}
+
+    def create(self, req):
+        env = self._deserialize(req.body, req.get_content_type())
+        context = req.environ['nova.context']
+        key_name = env['keypair']['key_name']
+        LOG.audit(_("Create key pair %s"), key_name, context=context)
+        data = self._gen_key(context, context.user_id, key_name)
+
+        rval = env
+        rval['keypair']['fingerprint'] = data['fingerprint']
+        rval['keypair']['private_key'] = data['private_key']
+        return rval
+
+    def delete(self, req, id):
+        context = req.environ['nova.context']
+        key_name = id
+        LOG.audit(_("Delete key pair %s"), key_name, context=context)
+        try:
+            db.key_pair_destroy(context, context.user_id, key_name)
+        except exception.NotFound:
+            # aws returns true even if the key doesn't exist
+            pass
+        return exc.HTTPAccepted()
+
+    def index(self, req):
+        context = req.environ['nova.context']
+        key_pairs = db.key_pair_get_all_by_user(context, context.user_id)
+        result = []
+        for key_pair in key_pairs:
+            # filter out the vpn keys
+            suffix = FLAGS.vpn_key_suffix
+            if context.is_admin or \
+               not key_pair['name'].endswith(suffix):
+                result.append({
+                    'name': key_pair['name'],
+                    'key_name': key_pair['name'],
+                    'fingerprint': key_pair['fingerprint'],
+                })
+
+
+        return {'keypairs': result}
+
+
+class AdminProjectController(wsgi.Controller):
 
     def show(self, req, id):
         return project_dict(manager.AuthManager().get_project(id))
@@ -590,11 +655,11 @@ class Admin(object):
     def get_resources(self):
         resources = []
         resources.append(extensions.ResourceExtension('admin/projects',
-                                                 ProjectController()))
+                                                 AdminProjectController()))
         resources.append(extensions.ResourceExtension('admin/services',
-                                                 ServiceController()))
+                                                 AdminServiceController()))
         resources.append(extensions.ResourceExtension('extras/consoles',
-                                             ConsoleController()))
+                                             ExtrasConsoleController()))
         resources.append(extensions.ResourceExtension('admin/flavors',
                                              AdminFlavorController()))
         resources.append(extensions.ResourceExtension('extras/usage',
@@ -603,4 +668,6 @@ class Admin(object):
                                              ExtrasFlavorController()))
         resources.append(extensions.ResourceExtension('extras/servers',
                                              ExtrasServerController()))
+        resources.append(extensions.ResourceExtension('extras/keypairs',
+                                             ExtrasKeypairController()))
         return resources

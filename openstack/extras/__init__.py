@@ -1,6 +1,7 @@
 from openstack.api.connection import ApiConnection
 from openstack.extras.consoles import ConsoleManager
 from openstack.extras.flavors import FlavorManager
+from openstack.extras.keypairs import KeypairManager
 from openstack.extras.servers import ServerManager
 from openstack.extras.tenants import TenantManager
 from openstack.extras.users import UserManager
@@ -33,6 +34,7 @@ class Extras(object):
         self.usage = UsageManager(self)
         self.flavors = FlavorManager(self)
         self.servers = ServerManager(self)
+        self.keypairs = KeypairManager(self)
 
     def authenticate(self):
         """
