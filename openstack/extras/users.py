@@ -31,6 +31,9 @@ class UserManager(base.ManagerWithFind):
         resp, body = self.api.connection.put(url, body=body)
         return self.resource_class(self, body[response_key])
 
+    def delete(self, user_id):
+        self._delete("/users/%s" % user_id)
+
     def list(self):
         """
         Get a list of users.
