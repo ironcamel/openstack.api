@@ -1,7 +1,6 @@
 from openstack.api.connection import ApiConnection
 from openstack.admin.projects import ProjectManager
 from openstack.admin.services import ServiceManager
-from openstack.admin.servers import ServerManager
 from openstack.admin.flavors import FlavorManager
 from openstack.api.config import Config
 
