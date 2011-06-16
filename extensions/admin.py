@@ -157,7 +157,7 @@ class ExtrasServerController(openstack_api.servers.ControllerV11):
                 self._build_extended_attributes(response, inst)
 
             def _build_extended_attributes(self, response, inst):
-                attrs = {'name': inst['name'],
+                attrs = {'name': inst['display_name'],
                         'memory_mb': inst['memory_mb'],
                         'vcpus': inst['vcpus'],
                         'disk_gb': inst['local_gb'],
@@ -169,8 +169,7 @@ class ExtrasServerController(openstack_api.servers.ControllerV11):
                         'scheduled_at': inst['scheduled_at'],
                         'launched_at': inst['launched_at'],
                         'terminated_at': inst['terminated_at'],
-                        'display_name': inst['display_name'],
-                        'display_description': inst['display_description'],
+                        'description': inst['display_description'],
                         'os_type': inst['os_type'],
                         'hostname': inst['hostname'],
                         'host': inst['host'],
@@ -190,6 +189,38 @@ class ExtrasServerController(openstack_api.servers.ControllerV11):
 
     def index(self, req):
         return self._items(req, is_detail=True)
+
+    # @scheduler_api.redirect_handler
+    def update(self, req, id):
+        """ Updates the server name or password """
+        if len(req.body) == 0:
+            raise exc.HTTPUnprocessableEntity()
+
+        inst_dict = self._deserialize(req.body, req.get_content_type())
+        if not inst_dict:
+            return faults.Fault(exc.HTTPUnprocessableEntity())
+
+        ctxt = req.environ['nova.context']
+        update_dict = {}
+
+        if 'name' in inst_dict['server']:
+            name = inst_dict['server']['name']
+            self._validate_server_name(name)
+            update_dict['display_name'] = name.strip()
+
+        if 'description' in inst_dict['server']:
+            description = inst_dict['server']['description']
+            update_dict['display_description'] = description.strip()
+
+        self._parse_update(ctxt, id, inst_dict, update_dict)
+
+        try:
+            self.compute_api.update(ctxt, id, **update_dict)
+        except exception.NotFound:
+            return faults.Fault(exc.HTTPNotFound())
+
+        return exc.HTTPNoContent()
+
 
 
 class ConsoleController(wsgi.Controller):
