@@ -16,4 +16,4 @@ class FlavorManager(compute.FlavorManager):
         
         :rtype: list of :class:`Flavor`.
         """
-        return self._list("/admin/flavors", "flavors")
+        return self._list("/extras/flavors", "flavors")
