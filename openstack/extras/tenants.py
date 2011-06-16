@@ -9,7 +9,6 @@ class Tenant(base.Resource):
         self.manager.delete(self)
 
     def update(self, description=None, enabled=None):
-        description = description or self.description or '(none)'
         self.manager.update(self.id, description, enabled)
 
 
