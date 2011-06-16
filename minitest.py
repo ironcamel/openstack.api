@@ -50,13 +50,13 @@ print "-----"
 #flavor = admin.flavors.create('', '', '', '', '')
 #flavor.delete(True)
 
-if False:
-    print "%d tenants" % len(accounts.tenants.list())
-    t = accounts.tenants.create('project:%d' % random.randint(0, 10000))
+if True:
+    print "%d users" % len(accounts.users.list())
+    t = accounts.users.create('jesse', 'anotherjesse@gmail.com', 'asdf', '1234', True)
     print 'created %s' % t
-    print "%d tenants" % len(accounts.tenants.list())
+    print "%d users" % len(accounts.users.list())
     t.delete()
-    print "after delete: %d tenants" % len(accounts.tenants.list())
+    print "after delete: %d users" % len(accounts.users.list())
 
 #console = extras.consoles.create(servers[0].id, 'vnc')
 #print console.output
