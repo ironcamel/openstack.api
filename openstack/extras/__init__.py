@@ -1,6 +1,7 @@
 from openstack.api.connection import ApiConnection
 from openstack.extras.consoles import ConsoleManager
 from openstack.extras.flavors import FlavorManager
+from openstack.extras.servers import ServerManager
 from openstack.extras.tenants import TenantManager
 from openstack.extras.users import UserManager
 from openstack.extras.usage import UsageManager
@@ -31,6 +32,7 @@ class Extras(object):
         self.consoles = ConsoleManager(self)
         self.usage = UsageManager(self)
         self.flavors = FlavorManager(self)
+        self.servers = ServerManager(self)
 
     def authenticate(self):
         """

@@ -138,8 +138,8 @@ def vpn_dict(project, vpn_instance):
     return rv
 
 
-class ServerController(wsgi.Controller):
-    def _get_builder(self, req):
+class ExtrasServerController(openstack_api.servers.ControllerV11):
+    def _get_view_builder(self, req):
         class ViewBuilder(views.servers.ViewBuilderV11):
             def __init__(self,
                          addresses_builder,
@@ -189,19 +189,27 @@ class ServerController(wsgi.Controller):
             addresses_builder, flavor_builder, image_builder, base_url)
 
     def index(self, req):
-        context = req.environ['nova.context'].elevated()
-        instances = db.instance_get_all(context)
-        builder = self._get_builder(req)
-        server_list = db.instance_get_all(context)
-        servers = [builder.build(inst, True)['server']
-                for inst in instances]
-        return dict(servers=servers)
+        return self._items(req, is_detail=True)
 
-    def show(self, req, id):
-        context = req.environ['nova.context'].elevated()
-        instance = db.instance_get(context, id)
-        builder = self._get_builder(req)
-        return builder.build(instance, True)
+# Note - this may not be needed, extras may be sufficient
+class AdminServerController(ExtrasServerController):
+
+    pass
+
+#    def index(self, req):
+#        context = req.environ['nova.context'].elevated()
+#        instances = db.instance_get_all(context)
+#        builder = self._get_builder(req)
+#        server_list = db.instance_get_all(context)
+#        servers = [builder.build(inst, True)['server']
+#                for inst in instances]
+#        return dict(servers=servers)
+#
+#    def show(self, req, id):
+#        context = req.environ['nova.context'].elevated()
+#        instance = db.instance_get(context, id)
+#        builder = self._get_builder(req)
+#        return builder.build(instance, True)
 
 
 class ConsoleController(wsgi.Controller):
@@ -283,6 +291,8 @@ class AdminFlavorController(ExtrasFlavorController):
 class UsageController(wsgi.Controller):
 
     def _hours_for(self, instance, period_start, period_stop):
+        print period_start
+        print period_stop
         # nothing if it stopped before the usage report start
         #terminated_at = instance['terminated_at']
         #launched_at = instance['launched_at']
@@ -572,7 +582,7 @@ class Admin(object):
         resources.append(extensions.ResourceExtension('admin/services',
                                                  ServiceController()))
         resources.append(extensions.ResourceExtension('admin/servers',
-                                             ServerController()))
+                                             AdminServerController()))
         resources.append(extensions.ResourceExtension('extras/consoles',
                                              ConsoleController()))
         resources.append(extensions.ResourceExtension('admin/flavors',
@@ -581,4 +591,6 @@ class Admin(object):
                                              UsageController()))
         resources.append(extensions.ResourceExtension('extras/flavors',
                                              ExtrasFlavorController()))
+        resources.append(extensions.ResourceExtension('extras/servers',
+                                             ExtrasServerController()))
         return resources
