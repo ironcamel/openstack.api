@@ -223,6 +223,89 @@ class ExtrasServerController(openstack_api.servers.ControllerV11):
         return exc.HTTPNoContent()
 
 
+    def create(self, req):
+        """ Creates a new server for a given user """
+        env = self._deserialize_create(req)
+        if not env:
+            return faults.Fault(exc.HTTPUnprocessableEntity())
+
+        context = req.environ['nova.context']
+
+        password = self._get_server_admin_password(env['server'])
+
+        key_name = env['server'].get('key_name')
+        key_data = None
+
+        if key_name:
+            try:
+                key_pair = db.key_pair_get(context, context.user_id, key_name)
+                key_name = key_pair['name']
+                key_data = key_pair['public_key']
+            except:
+                msg = _("Can not load the requested key %s" % key_name)
+                return faults.Fault(exc.HTTPBadRequest(msg))
+        else:
+            # backwards compatibility
+            key_pairs = auth_manager.AuthManager.get_key_pairs(context)
+            if key_pairs:
+                key_pair = key_pairs[0]
+                key_name = key_pair['name']
+                key_data = key_pair['public_key']
+
+        requested_image_id = self._image_id_from_req_data(env)
+        try:
+            image_id = common.get_image_id_from_image_hash(self._image_service,
+                context, requested_image_id)
+        except:
+            msg = _("Can not find requested image")
+            return faults.Fault(exc.HTTPBadRequest(msg))
+
+        kernel_id, ramdisk_id = self._get_kernel_ramdisk_from_image(
+            req, image_id)
+
+        personality = env['server'].get('personality')
+        injected_files = []
+        if personality:
+            injected_files = self._get_injected_files(personality)
+
+        flavor_id = self._flavor_id_from_req_data(env)
+
+        if not 'name' in env['server']:
+            msg = _("Server name is not defined")
+            return exc.HTTPBadRequest(msg)
+
+        name = env['server']['name']
+        self._validate_server_name(name)
+        name = name.strip()
+
+        try:
+            inst_type = \
+                instance_types.get_instance_type_by_flavor_id(flavor_id)
+            (inst,) = self.compute_api.create(
+                context,
+                inst_type,
+                image_id,
+                kernel_id=kernel_id,
+                ramdisk_id=ramdisk_id,
+                display_name=name,
+                display_description=name,
+                key_name=key_name,
+                key_data=key_data,
+                user_data=env['server'].get('user_data'),
+                metadata=env['server'].get('metadata', {}),
+                injected_files=injected_files,
+                admin_password=password)
+        except quota.QuotaError as error:
+            self._handle_quota_error(error)
+
+        inst['instance_type'] = inst_type
+        inst['image_id'] = requested_image_id
+
+        builder = self._get_view_builder(req)
+        server = builder.build(inst, is_detail=True)
+        server['server']['adminPass'] = password
+        return server
+
 
 class ExtrasConsoleController(wsgi.Controller):
     def create(self, req):
