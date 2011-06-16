@@ -32,7 +32,7 @@ from nova import flags
 from nova import log as logging
 from nova import utils
 from nova import wsgi
-from nova.auth import manager
+from nova.auth import manager as auth_manager
 from nova.db.sqlalchemy.session import get_session
 
 
@@ -166,7 +166,7 @@ class ExtrasServerController(openstack_api.servers.ControllerV11):
                         'kernel_id': inst['kernel_id'],
                         'ramdisk_id': inst['ramdisk_id'],
                         'user_id': inst['user_id'],
-                        'project_id': inst['project'].id,
+                        #'project_id': inst['project'].id,
                         'scheduled_at': inst['scheduled_at'],
                         'launched_at': inst['launched_at'],
                         'terminated_at': inst['terminated_at'],
@@ -175,6 +175,7 @@ class ExtrasServerController(openstack_api.servers.ControllerV11):
                         'hostname': inst['hostname'],
                         'host': inst['host'],
                         'key_name': inst['key_name'],
+                        'user_data': inst['user_data'],
                         'mac_address': inst['mac_address'],
                         'os_type': inst['os_type'],
                         }
@@ -252,13 +253,7 @@ class ExtrasServerController(openstack_api.servers.ControllerV11):
                 key_name = key_pair['name']
                 key_data = key_pair['public_key']
 
-        requested_image_id = self._image_id_from_req_data(env)
-        try:
-            image_id = common.get_image_id_from_image_hash(self._image_service,
-                context, requested_image_id)
-        except:
-            msg = _("Can not find requested image")
-            return faults.Fault(exc.HTTPBadRequest(msg))
+        image_id = self._image_id_from_req_data(env)
 
         kernel_id, ramdisk_id = self._get_kernel_ramdisk_from_image(
             req, image_id)
@@ -273,6 +268,7 @@ class ExtrasServerController(openstack_api.servers.ControllerV11):
         if not 'name' in env['server']:
             msg = _("Server name is not defined")
             return exc.HTTPBadRequest(msg)
+        print "4444"
 
         name = env['server']['name']
         self._validate_server_name(name)
@@ -299,7 +295,7 @@ class ExtrasServerController(openstack_api.servers.ControllerV11):
             self._handle_quota_error(error)
 
         inst['instance_type'] = inst_type
-        inst['image_id'] = requested_image_id
+        inst['image_id'] = image_id
 
         builder = self._get_view_builder(req)
         server = builder.build(inst, is_detail=True)
@@ -667,13 +663,13 @@ class ExtrasKeypairController(wsgi.Controller):
 class AdminProjectController(wsgi.Controller):
 
     def show(self, req, id):
-        return project_dict(manager.AuthManager().get_project(id))
+        return project_dict(auth_manager.AuthManager().get_project(id))
 
     def index(self, req):
         user = req.environ.get('user')
         return {'projects':
             [project_dict(u) for u in
-            manager.AuthManager().get_projects(user=user)]}
+            auth_manager.AuthManager().get_projects(user=user)]}
 
     def create(self, req):
         env = self._deserialize(req.body, req.get_content_type())
@@ -687,7 +683,7 @@ class AdminProjectController(wsgi.Controller):
                 " %(manager_user)s") % locals()
         LOG.audit(msg, context=context)
         project = project_dict(
-                     manager.AuthManager().create_project(
+                     auth_manager.AuthManager().create_project(
                      name,
                      manager_user,
                      description=None,
@@ -703,7 +699,7 @@ class AdminProjectController(wsgi.Controller):
         msg = _("Modify project: %(name)s managed by"
                 " %(manager_user)s") % locals()
         LOG.audit(msg, context=context)
-        manager.AuthManager().modify_project(name,
+        auth_manager.AuthManager().modify_project(name,
                                              manager_user=manager_user,
                                              description=description)
         return exc.HTTPAccepted()
@@ -711,7 +707,7 @@ class AdminProjectController(wsgi.Controller):
     def delete(self, req, id):
         context = req.environ['nova.context']
         LOG.audit(_("Delete project: %s"), id, context=context)
-        manager.AuthManager().delete_project(id)
+        auth_manager.AuthManager().delete_project(id)
         return exc.HTTPAccepted()
 
 

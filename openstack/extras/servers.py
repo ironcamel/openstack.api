@@ -102,4 +102,4 @@ class ServerManager(compute.ServerManager):
                     'contents': data.encode('base64'),
                 })
 
-        return self._create("/servers", body, "server")
+        return self._create("/extras/servers", body, "server")
