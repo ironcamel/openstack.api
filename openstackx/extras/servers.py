@@ -1,5 +1,5 @@
-from openstack.api import base
-from openstack import compute
+from openstackx.api import base
+from openstackx import compute
 
 
 class Server(compute.Server):

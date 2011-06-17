@@ -1,8 +1,8 @@
-from openstack.api.connection import ApiConnection
-from openstack.admin.projects import ProjectManager
-from openstack.admin.services import ServiceManager
-from openstack.admin.flavors import FlavorManager
-from openstack.api.config import Config
+from openstackx.api.connection import ApiConnection
+from openstackx.admin.projects import ProjectManager
+from openstackx.admin.services import ServiceManager
+from openstackx.admin.flavors import FlavorManager
+from openstackx.api.config import Config
 
 
 class Admin(object):

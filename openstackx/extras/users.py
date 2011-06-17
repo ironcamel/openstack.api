@@ -1,4 +1,4 @@
-from openstack.api import base
+from openstackx.api import base
 
 
 class User(base.Resource):
@@ -40,4 +40,3 @@ class UserManager(base.ManagerWithFind):
         :rtype: list of :class:`User`
         """
         return self._list("/users", "users")
-
