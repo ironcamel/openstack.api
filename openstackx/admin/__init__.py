@@ -1,9 +1,8 @@
-from openstackx.api.connection import ApiConnection
-from openstackx.admin.projects import ProjectManager
-from openstackx.admin.services import ServiceManager
-from openstackx.admin.servers import ServerManager
-from openstackx.admin.flavors import FlavorManager
-from openstackx.api.config import Config
+from openstack.api.connection import ApiConnection
+from openstack.admin.projects import ProjectManager
+from openstack.admin.services import ServiceManager
+from openstack.admin.flavors import FlavorManager
+from openstack.api.config import Config
 
 
 class Admin(object):
@@ -29,7 +28,6 @@ class Admin(object):
         self.connection = ApiConnection(self.config)
         self.projects = ProjectManager(self)
         self.services = ServiceManager(self)
-        self.servers = ServerManager(self)
         self.flavors = FlavorManager(self)
 
     def authenticate(self):

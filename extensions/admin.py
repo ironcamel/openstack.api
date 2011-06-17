@@ -25,13 +25,14 @@ from webob import exc
 
 
 from nova import compute
+from nova import crypto
 from nova import db
 from nova import exception
 from nova import flags
 from nova import log as logging
 from nova import utils
 from nova import wsgi
-from nova.auth import manager
+from nova.auth import manager as auth_manager
 from nova.db.sqlalchemy.session import get_session
 
 
@@ -138,8 +139,8 @@ def vpn_dict(project, vpn_instance):
     return rv
 
 
-class ServerController(wsgi.Controller):
-    def _get_builder(self, req):
+class ExtrasServerController(openstack_api.servers.ControllerV11):
+    def _get_view_builder(self, req):
         class ViewBuilder(views.servers.ViewBuilderV11):
             def __init__(self,
                          addresses_builder,
@@ -157,7 +158,7 @@ class ServerController(wsgi.Controller):
                 self._build_extended_attributes(response, inst)
 
             def _build_extended_attributes(self, response, inst):
-                attrs = {'name': inst['name'],
+                attrs = {'name': inst['display_name'],
                         'memory_mb': inst['memory_mb'],
                         'vcpus': inst['vcpus'],
                         'disk_gb': inst['local_gb'],
@@ -165,16 +166,16 @@ class ServerController(wsgi.Controller):
                         'kernel_id': inst['kernel_id'],
                         'ramdisk_id': inst['ramdisk_id'],
                         'user_id': inst['user_id'],
-                        'project_id': inst['project'].id,
+                        #'project_id': inst['project'].id,
                         'scheduled_at': inst['scheduled_at'],
                         'launched_at': inst['launched_at'],
                         'terminated_at': inst['terminated_at'],
-                        'display_name': inst['display_name'],
-                        'display_description': inst['display_description'],
+                        'description': inst['display_description'],
                         'os_type': inst['os_type'],
                         'hostname': inst['hostname'],
                         'host': inst['host'],
                         'key_name': inst['key_name'],
+                        'user_data': inst['user_data'],
                         'mac_address': inst['mac_address'],
                         'os_type': inst['os_type'],
                         }
@@ -189,22 +190,120 @@ class ServerController(wsgi.Controller):
             addresses_builder, flavor_builder, image_builder, base_url)
 
     def index(self, req):
-        context = req.environ['nova.context'].elevated()
-        instances = db.instance_get_all(context)
-        builder = self._get_builder(req)
-        server_list = db.instance_get_all(context)
-        servers = [builder.build(inst, True)['server']
-                for inst in instances]
-        return dict(servers=servers)
+        return self._items(req, is_detail=True)
 
-    def show(self, req, id):
-        context = req.environ['nova.context'].elevated()
-        instance = db.instance_get(context, id)
-        builder = self._get_builder(req)
-        return builder.build(instance, True)
+    # @scheduler_api.redirect_handler
+    def update(self, req, id):
+        """ Updates the server name or password """
+        if len(req.body) == 0:
+            raise exc.HTTPUnprocessableEntity()
+
+        inst_dict = self._deserialize(req.body, req.get_content_type())
+        if not inst_dict:
+            return faults.Fault(exc.HTTPUnprocessableEntity())
+
+        ctxt = req.environ['nova.context']
+        update_dict = {}
+
+        if 'name' in inst_dict['server']:
+            name = inst_dict['server']['name']
+            self._validate_server_name(name)
+            update_dict['display_name'] = name.strip()
+
+        if 'description' in inst_dict['server']:
+            description = inst_dict['server']['description']
+            update_dict['display_description'] = description.strip()
+
+        self._parse_update(ctxt, id, inst_dict, update_dict)
+
+        try:
+            self.compute_api.update(ctxt, id, **update_dict)
+        except exception.NotFound:
+            return faults.Fault(exc.HTTPNotFound())
+
+        return exc.HTTPNoContent()
 
 
-class ConsoleController(wsgi.Controller):
+    def create(self, req):
+        """ Creates a new server for a given user """
+        env = self._deserialize_create(req)
+        if not env:
+            return faults.Fault(exc.HTTPUnprocessableEntity())
+
+        context = req.environ['nova.context']
+
+        password = self._get_server_admin_password(env['server'])
+
+        key_name = env['server'].get('key_name')
+        key_data = None
+
+        if key_name:
+            try:
+                key_pair = db.key_pair_get(context, context.user_id, key_name)
+                key_name = key_pair['name']
+                key_data = key_pair['public_key']
+            except:
+                msg = _("Can not load the requested key %s" % key_name)
+                return faults.Fault(exc.HTTPBadRequest(msg))
+        else:
+            # backwards compatibility
+            key_pairs = auth_manager.AuthManager.get_key_pairs(context)
+            if key_pairs:
+                key_pair = key_pairs[0]
+                key_name = key_pair['name']
+                key_data = key_pair['public_key']
+
+        image_id = self._image_id_from_req_data(env)
+
+        kernel_id, ramdisk_id = self._get_kernel_ramdisk_from_image(
+            req, image_id)
+
+        personality = env['server'].get('personality')
+        injected_files = []
+        if personality:
+            injected_files = self._get_injected_files(personality)
+
+        flavor_id = self._flavor_id_from_req_data(env)
+
+        if not 'name' in env['server']:
+            msg = _("Server name is not defined")
+            return exc.HTTPBadRequest(msg)
+        print "4444"
+
+        name = env['server']['name']
+        self._validate_server_name(name)
+        name = name.strip()
+
+        try:
+            inst_type = \
+                instance_types.get_instance_type_by_flavor_id(flavor_id)
+            (inst,) = self.compute_api.create(
+                context,
+                inst_type,
+                image_id,
+                kernel_id=kernel_id,
+                ramdisk_id=ramdisk_id,
+                display_name=name,
+                display_description=name,
+                key_name=key_name,
+                key_data=key_data,
+                user_data=env['server'].get('user_data'),
+                metadata=env['server'].get('metadata', {}),
+                injected_files=injected_files,
+                admin_password=password)
+        except quota.QuotaError as error:
+            self._handle_quota_error(error)
+
+        inst['instance_type'] = inst_type
+        inst['image_id'] = image_id
+
+        builder = self._get_view_builder(req)
+        server = builder.build(inst, is_detail=True)
+        server['server']['adminPass'] = password
+        return server
+
+
+class ExtrasConsoleController(wsgi.Controller):
     def create(self, req):
         context = req.environ['nova.context'].elevated()
         env = self._deserialize(req.body, req.get_content_type())
@@ -220,6 +319,7 @@ class ConsoleController(wsgi.Controller):
         else:
             raise Exception("Not Implemented")
         return {'console':{'id': '', 'type': console_type, 'output': output}}
+
 
 class ExtrasFlavorController(openstack_api.flavors.ControllerV11):
     def _get_view_builder(self, req):
@@ -283,6 +383,8 @@ class AdminFlavorController(ExtrasFlavorController):
 class UsageController(wsgi.Controller):
 
     def _hours_for(self, instance, period_start, period_stop):
+        print period_start
+        print period_stop
         # nothing if it stopped before the usage report start
         #terminated_at = instance['terminated_at']
         #launched_at = instance['launched_at']
@@ -317,7 +419,7 @@ class UsageController(wsgi.Controller):
             # instance hasn't launched, so no charge
             return 0
 
-    def _usage_for_period(self, period_start, period_stop, tenant_id=None):
+    def _usage_for_period(self, context, period_start, period_stop, tenant_id=None):
         fields = ['id',
                   'image_id',
                   'project_id',
@@ -351,7 +453,7 @@ class UsageController(wsgi.Controller):
                 o[fields[i]] = row[i]
             o['hours'] = self._hours_for(o, period_start, period_stop)
 
-            flavor = instance_types.get_instance_type_by_flavor_id(o['instance_type_id'])
+            flavor = db.instance_type_get_by_id(context, o['instance_type_id'])
 
             o['name'] = o['display_name']
             del(o['display_name'])
@@ -378,7 +480,14 @@ class UsageController(wsgi.Controller):
 
             del(o['state_description'])
 
-            delta = datetime.utcnow() - self._parse_datetime(o['started_at'])
+            now = datetime.utcnow()
+
+            if o['state'] == 'terminated':
+                delta = self._parse_datetime(o['ended_at'])\
+                             - self._parse_datetime(o['started_at'])
+            else:
+                delta = now - self._parse_datetime(o['started_at'])
+
             o['uptime'] = delta.days + 24 * 60 + delta.seconds
 
             if not o['tenant_id'] in rval:
@@ -432,12 +541,14 @@ class UsageController(wsgi.Controller):
 
     def index(self, req):
         (period_start, period_stop) = self._get_datetime_range(req)
-        usage = self._usage_for_period(period_start, period_stop)
+        context = req.environ['nova.context']
+        usage = self._usage_for_period(context, period_start, period_stop)
         return {'usage': {'values': usage}}
     
     def show(self, req, id):
         (period_start, period_stop) = self._get_datetime_range(req)
-        usage = self._usage_for_period(period_start, period_stop, id)
+        context = req.environ['nova.context']
+        usage = self._usage_for_period(context, period_start, period_stop, id)
         if len(usage):
             usage = usage[0]
         else:
@@ -445,29 +556,37 @@ class UsageController(wsgi.Controller):
         return {'usage': usage}
     
 
-class ServiceController(wsgi.Controller):
+class AdminServiceController(wsgi.Controller):
+
+    def _set_attr(self, service):
+        now = datetime.utcnow()
+        delta = now - (service['updated_at'] or service['created_at'])
+        stats = {}
+        if service['binary'] == 'nova-compute':
+            stats['max_vcpus'] = FLAGS.max_cores
+            stats['max_gigabytes'] = FLAGS.max_gigabytes
+        return {
+            'id': service['id'],
+            'host': service['host'],
+            'disabled': service['disabled'],
+            'type': service['binary'],
+            'zone': service['availability_zone'],
+            'last_update': service['updated_at'],
+            'up': (delta.seconds <= FLAGS.service_down_time),
+            'stats': stats
+        }
 
     def index(self, req):
         context = req.environ['nova.context'].elevated()
-        now = datetime.utcnow()
         services = []
-        for service in db.service_get_all(context, False):
-            delta = now - (service['updated_at'] or service['created_at'])
-            stats = {}
-            if service['binary'] == 'nova-compute':
-                stats['max_vcpus'] = FLAGS.max_cores
-                stats['max_gigabytes'] = FLAGS.max_gigabytes
-            services.append({
-                'id': service['id'],
-                'host': service['host'],
-                'disabled': service['disabled'],
-                'type': service['binary'],
-                'zone': service['availability_zone'],
-                'last_update': service['updated_at'],
-                'up': (delta.seconds <= FLAGS.service_down_time),
-                'stats': stats
-            })
+        for service in db.service_get_all(context):
+            services.append(self._set_attr(service))
         return {'services': services}
+
+    def show(self, req, id):
+        context = req.environ['nova.context'].elevated()
+        service = self._set_attr(db.service_get(context, id))
+        return {'service': service}
 
     def update(self, req, id):
         context = req.environ['nova.context'].elevated()
@@ -477,16 +596,80 @@ class ServiceController(wsgi.Controller):
         return exc.HTTPAccepted()
 
 
-class ProjectController(wsgi.Controller):
+class ExtrasKeypairController(wsgi.Controller):
+    def _gen_key(self, context, user_id, key_name):
+        """Generate a key
+
+        This is a module level method because it is slow and we need to defer
+        it into a process pool."""
+        # NOTE(vish): generating key pair is slow so check for legal
+        #             creation before creating key_pair
+        try:
+            db.key_pair_get(context, user_id, key_name)
+            raise exception.KeyPairExists(key_name=key_name)
+        except exception.NotFound:
+            pass
+        private_key, public_key, fingerprint = crypto.generate_key_pair()
+        key = {}
+        key['user_id'] = user_id
+        key['name'] = key_name
+        key['public_key'] = public_key
+        key['fingerprint'] = fingerprint
+        db.key_pair_create(context, key)
+        return {'private_key': private_key, 'fingerprint': fingerprint}
+
+    def create(self, req):
+        env = self._deserialize(req.body, req.get_content_type())
+        context = req.environ['nova.context']
+        key_name = env['keypair']['key_name']
+        LOG.audit(_("Create key pair %s"), key_name, context=context)
+        data = self._gen_key(context, context.user_id, key_name)
+
+        rval = env
+        rval['keypair']['fingerprint'] = data['fingerprint']
+        rval['keypair']['private_key'] = data['private_key']
+        return rval
+
+    def delete(self, req, id):
+        context = req.environ['nova.context']
+        key_name = id
+        LOG.audit(_("Delete key pair %s"), key_name, context=context)
+        try:
+            db.key_pair_destroy(context, context.user_id, key_name)
+        except exception.NotFound:
+            # aws returns true even if the key doesn't exist
+            pass
+        return exc.HTTPAccepted()
+
+    def index(self, req):
+        context = req.environ['nova.context']
+        key_pairs = db.key_pair_get_all_by_user(context, context.user_id)
+        result = []
+        for key_pair in key_pairs:
+            # filter out the vpn keys
+            suffix = FLAGS.vpn_key_suffix
+            if context.is_admin or \
+               not key_pair['name'].endswith(suffix):
+                result.append({
+                    'name': key_pair['name'],
+                    'key_name': key_pair['name'],
+                    'fingerprint': key_pair['fingerprint'],
+                })
+
+
+        return {'keypairs': result}
+
+
+class AdminProjectController(wsgi.Controller):
 
     def show(self, req, id):
-        return project_dict(manager.AuthManager().get_project(id))
+        return project_dict(auth_manager.AuthManager().get_project(id))
 
     def index(self, req):
         user = req.environ.get('user')
         return {'projects':
             [project_dict(u) for u in
-            manager.AuthManager().get_projects(user=user)]}
+            auth_manager.AuthManager().get_projects(user=user)]}
 
     def create(self, req):
         env = self._deserialize(req.body, req.get_content_type())
@@ -500,7 +683,7 @@ class ProjectController(wsgi.Controller):
                 " %(manager_user)s") % locals()
         LOG.audit(msg, context=context)
         project = project_dict(
-                     manager.AuthManager().create_project(
+                     auth_manager.AuthManager().create_project(
                      name,
                      manager_user,
                      description=None,
@@ -516,7 +699,7 @@ class ProjectController(wsgi.Controller):
         msg = _("Modify project: %(name)s managed by"
                 " %(manager_user)s") % locals()
         LOG.audit(msg, context=context)
-        manager.AuthManager().modify_project(name,
+        auth_manager.AuthManager().modify_project(name,
                                              manager_user=manager_user,
                                              description=description)
         return exc.HTTPAccepted()
@@ -524,7 +707,7 @@ class ProjectController(wsgi.Controller):
     def delete(self, req, id):
         context = req.environ['nova.context']
         LOG.audit(_("Delete project: %s"), id, context=context)
-        manager.AuthManager().delete_project(id)
+        auth_manager.AuthManager().delete_project(id)
         return exc.HTTPAccepted()
 
 
@@ -551,17 +734,19 @@ class Admin(object):
     def get_resources(self):
         resources = []
         resources.append(extensions.ResourceExtension('admin/projects',
-                                                 ProjectController()))
+                                                 AdminProjectController()))
         resources.append(extensions.ResourceExtension('admin/services',
-                                                 ServiceController()))
-        resources.append(extensions.ResourceExtension('admin/servers',
-                                             ServerController()))
+                                                 AdminServiceController()))
         resources.append(extensions.ResourceExtension('extras/consoles',
-                                             ConsoleController()))
+                                             ExtrasConsoleController()))
         resources.append(extensions.ResourceExtension('admin/flavors',
                                              AdminFlavorController()))
         resources.append(extensions.ResourceExtension('extras/usage',
                                              UsageController()))
         resources.append(extensions.ResourceExtension('extras/flavors',
                                              ExtrasFlavorController()))
+        resources.append(extensions.ResourceExtension('extras/servers',
+                                             ExtrasServerController()))
+        resources.append(extensions.ResourceExtension('extras/keypairs',
+                                             ExtrasKeypairController()))
         return resources

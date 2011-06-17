@@ -13,8 +13,8 @@ else:
 
 
 auth = openstackx.auth.Auth(management_url='http://%s:8080/v2.0/' % host)
-token = auth.tokens.create('1234', 'joeuser', 'secrete')
-print token.id
+token = auth.tokens.create('1234', 'admin', 'secrete')
+print token.serviceCatalog
 
 admin_token = auth.tokens.create('1234', 'admin', 'secrete')
 accounts = openstackx.extras.Account(auth_token=admin_token.id,
@@ -31,14 +31,14 @@ admin = openstackx.admin.Admin(auth_token=token.id,
 compute = openstackx.compute.Compute(auth_token=token.id,
                                     auth_url='http://%s:8774/v1.1/' % host,
                                     management_url='http://%s:8774/v1.1/' % host)
-
-print extras.flavors.list()[0]._info
-print extras.usage.get('1234', datetime.utcnow(), datetime.utcnow())._info
-#print extras.usage.list(datetime.utcnow(), datetime.utcnow())[0]._info
-print admin.services.list()[3]._info
-servers = compute.servers.list()
-console = extras.consoles.create(servers[0].id, 'vnc')
-print console
+print "-----"
+print extras.keypairs.list()
+#print extras.keypairs.delete('test')
+#print extras.keypairs.create('test')
+#print extras.keypairs.create('test2')
+print extras.servers.list()[0]._info['attrs']['description']
+#print extras.servers.list()[0].update('my server', None, 'description')
+print "-----"
 #flavors = admin.flavors.list()
 #services =  admin.services.list()
 #print services
@@ -47,6 +47,7 @@ print console
 #    s.update(False)
 
 
+print admin.flavors.list()
 #admin.flavors.delete(405)
 #flavor = admin.flavors.create('', '', '', '', '')
 #flavor.delete(True)
@@ -58,10 +59,14 @@ if False:
     t.update("test", False)
     print t.enabled
     print t.description
+
+if False:
+    print "%d users" % len(accounts.users.list())
+    t = accounts.users.create('jesse', 'anotherjesse@gmail.com', 'asdf', '1234', True)
     print 'created %s' % t
-    print "%d tenants" % len(accounts.tenants.list())
+    print "%d users" % len(accounts.users.list())
     t.delete()
-    print "after delete: %d tenants" % len(accounts.tenants.list())
+    print "after delete: %d users" % len(accounts.users.list())
 
 #console = extras.consoles.create(servers[0].id, 'vnc')
 #print console.output
