@@ -39,7 +39,7 @@ LOG = logging.getLogger('nova.api.openstack.extras')
 
 
 
-class ConsoleController(wsgi.Controller):
+class ConsoleController(object):
     def create(self, req):
         context = req.environ['nova.context'].elevated()
         env = self._deserialize(req.body, req.get_content_type())

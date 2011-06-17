@@ -303,7 +303,7 @@ class ExtrasServerController(openstack_api.servers.ControllerV11):
         return server
 
 
-class ExtrasConsoleController(wsgi.Controller):
+class ExtrasConsoleController(object):
     def create(self, req):
         context = req.environ['nova.context'].elevated()
         env = self._deserialize(req.body, req.get_content_type())
@@ -380,7 +380,7 @@ class AdminFlavorController(ExtrasFlavorController):
         return exc.HTTPAccepted()
 
 
-class UsageController(wsgi.Controller):
+class UsageController(object):
 
     def _hours_for(self, instance, period_start, period_stop):
         print period_start
@@ -556,7 +556,7 @@ class UsageController(wsgi.Controller):
         return {'usage': usage}
     
 
-class AdminServiceController(wsgi.Controller):
+class AdminServiceController(object):
 
     def _set_attr(self, service):
         now = datetime.utcnow()
@@ -596,7 +596,7 @@ class AdminServiceController(wsgi.Controller):
         return exc.HTTPAccepted()
 
 
-class ExtrasKeypairController(wsgi.Controller):
+class ExtrasKeypairController(object):
     def _gen_key(self, context, user_id, key_name):
         """Generate a key
 
@@ -660,7 +660,7 @@ class ExtrasKeypairController(wsgi.Controller):
         return {'keypairs': result}
 
 
-class AdminProjectController(wsgi.Controller):
+class AdminProjectController(object):
 
     def show(self, req, id):
         return project_dict(auth_manager.AuthManager().get_project(id))
